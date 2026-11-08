@@ -1626,10 +1626,10 @@ async function aboutDlg() {
     title: t('Névjegy'),
     body: h('div.about',
       h('div.about-hero', h('div.about-logo', h('img', { src: 'img/icon.svg', alt: '' })), h('div.about-name', 'FtpStar'), h('div.about-ver', 'v' + S.info.version),
-      h('div.about-tag', t('FTP, FTPS, SFTP, Amazon S3 (és kompatibilis) és Microsoft OneDrive kliens két panellel, átviteli sorral, mappa-összevetéssel és távoli szerkesztéssel.'))),
+      h('div.about-tag', t('FTP, FTPS, SFTP, Amazon S3 (és kompatibilis) és Microsoft OneDrive kliens két panellel, átviteli sorral, mappa-összevetéssel, távoli szerkesztéssel és képek bélyegképeivel.'))),
     h('div.about-feats', [
       ['server', 'FTP / FTPS'], ['lock', 'SFTP'], ['bucket', 'Amazon S3'], ['drive', 'OneDrive'],
-      ['queue', t('Átviteli sor')], ['compare', t('Összevetés')], ['edit', t('Távoli szerkesztés')], ['globe', t('Magyar / English')],
+      ['queue', t('Átviteli sor')], ['compare', t('Összevetés')], ['edit', t('Távoli szerkesztés')], ['image', t('Ikonok és bélyegképek')], ['globe', t('Magyar / English')],
     ].map(([ic, l]) => h('span.about-feat', icon(ic), l))),
     h('div.about-info', [
       [t('Verzió'), S.info.version || '?'],
