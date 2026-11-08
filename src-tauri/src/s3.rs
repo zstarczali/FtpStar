@@ -8,7 +8,10 @@ use s3::creds::Credentials;
 use s3::{Bucket, Region};
 
 pub struct S3 {
+    /// listing, folders, delete, rename (with the network timeout)
     bucket: Box<Bucket>,
+    /// downloads and uploads (no limit on the whole request)
+    xfer: Box<Bucket>,
 }
 
 /// "/a/b" → "a/b"; with `dir`, "a/b/" ("" for the root).
@@ -55,7 +58,12 @@ impl S3 {
         if custom || site.s3_path_style {
             bucket = bucket.with_path_style();
         }
-        let me = Self { bucket };
+        // rust-s3's timeout covers the whole request: fine for listing and the
+        // like, but a big file would be cut off, so transfers get none
+        let mut xfer = bucket.clone();
+        xfer.set_request_timeout(None);
+        bucket.set_request_timeout(Some(crate::settings::net_timeout().max(std::time::Duration::from_secs(30))));
+        let me = Self { bucket, xfer };
         // a cheap call that fails on wrong keys, region or bucket
         me.bucket.list_page(String::new(), Some("/".into()), None, None, Some(1)).await.map_err(err)?;
         let home = if site.remote_dir.trim().is_empty() { "/".into() } else { site.remote_dir.clone() };
@@ -127,7 +135,7 @@ impl S3 {
     pub async fn download(&self, remote: &str, local: &str, p: Progress) -> Result<(), String> {
         let file = tokio::fs::File::create(local).await.map_err(|e| format!("{local}: {e}"))?;
         let mut w = ProgressWriter { inner: tokio::io::BufWriter::with_capacity(256 * 1024, file), progress: p };
-        let r = self.bucket.get_object_to_writer(key(remote, false), &mut w).await.map_err(err).and_then(check_status);
+        let r = self.xfer.get_object_to_writer(key(remote, false), &mut w).await.map_err(err).and_then(check_status);
         let r = match r {
             Ok(()) => tokio::io::AsyncWriteExt::flush(&mut w).await.map_err(|e| e.to_string()),
             Err(e) => Err(e),
@@ -142,7 +150,7 @@ impl S3 {
     pub async fn upload(&self, local: &str, remote: &str, p: Progress) -> Result<(), String> {
         let file = tokio::fs::File::open(local).await.map_err(|e| format!("{local}: {e}"))?;
         let mut r = ProgressReader { inner: file, progress: p };
-        let res = self.bucket.put_object_stream(&mut r, key(remote, false)).await.map_err(err)?;
+        let res = self.xfer.put_object_stream(&mut r, key(remote, false)).await.map_err(err)?;
         check_status(res.status_code())
     }
 }

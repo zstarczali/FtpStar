@@ -18,6 +18,18 @@ pub fn tr(hu: &str, en: &str) -> String {
     if ENGLISH.load(std::sync::atomic::Ordering::Relaxed) { en.to_string() } else { hu.to_string() }
 }
 
+/// Network timeout in seconds (Settings → General), read by every protocol.
+static NET_TIMEOUT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(30);
+
+/// How long a connection attempt or a stalled read / write may take.
+pub fn net_timeout() -> std::time::Duration {
+    std::time::Duration::from_secs(NET_TIMEOUT.load(std::sync::atomic::Ordering::Relaxed))
+}
+
+fn apply_timeout(secs: u32) {
+    NET_TIMEOUT.store(secs.clamp(5, 600) as u64, std::sync::atomic::Ordering::Relaxed);
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -38,6 +50,8 @@ pub struct Settings {
     pub last_local_dir: String,
     /// Small UI preferences of the frontend (column widths, panel sizes…).
     pub ui: BTreeMap<String, serde_json::Value>,
+    /// Network timeout in seconds: connecting, and a read / write that stalls.
+    pub timeout: u32,
     /// Folder with the installers (empty = update::UPDATE_SERVER_DEFAULT)
     pub update_server: String,
     /// Look for a new version at start
@@ -61,6 +75,7 @@ impl Default for Settings {
             open_sites: vec![],
             last_local_dir: String::new(),
             ui: BTreeMap::new(),
+            timeout: 30,
             update_server: String::new(),
             update_check: true,
             update_skip: String::new(),
@@ -139,8 +154,10 @@ pub struct Store {
 
 impl Store {
     pub fn load(dir: PathBuf) -> Self {
+        let settings: Settings = load_json(&dir.join("settings.json"));
+        apply_timeout(settings.timeout);
         Self {
-            settings: Mutex::new(load_json(&dir.join("settings.json"))),
+            settings: Mutex::new(settings),
             sites: Mutex::new(load_json(&dir.join("sites.json"))),
             known_hosts: Mutex::new(load_json(&dir.join("known_hosts.json"))),
             dir,
@@ -157,6 +174,7 @@ impl Store {
 
     pub fn save_settings(&self, s: Settings) -> Result<(), String> {
         save_json(&self.dir.join("settings.json"), &s)?;
+        apply_timeout(s.timeout);
         *self.settings.lock().unwrap() = s;
         Ok(())
     }

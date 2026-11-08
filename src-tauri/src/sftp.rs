@@ -67,7 +67,7 @@ impl Sftp {
         let was_known = known.is_some();
         let handler = HostCheck { known: known.clone(), accept, seen: seen.clone() };
         let addr = (site.host.trim().to_string(), site.port_or_default());
-        let connected = tokio::time::timeout(Duration::from_secs(20), client::connect(Arc::new(config), addr, handler)).await;
+        let connected = tokio::time::timeout(crate::settings::net_timeout(), client::connect(Arc::new(config), addr, handler)).await;
         let mut handle = match connected {
             Err(_) => return Err(format!("{}: connection timed out", site.host)),
             Ok(Ok(h)) => h,
@@ -121,7 +121,7 @@ impl Sftp {
         let channel = handle.channel_open_session().await.map_err(|e| e.to_string())?;
         channel.request_subsystem(true, "sftp").await.map_err(|e| e.to_string())?;
         let sftp = SftpSession::new(channel.into_stream()).await.map_err(|e| e.to_string())?;
-        sftp.set_timeout(60);
+        sftp.set_timeout(crate::settings::net_timeout().as_secs().max(10));
         let home = sftp.canonicalize(".").await.unwrap_or_else(|_| "/".into());
         Ok(Opened {
             conn: Arc::new(Self { _handle: handle, sftp }),

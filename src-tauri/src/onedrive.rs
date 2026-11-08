@@ -21,7 +21,8 @@ const CHUNK: usize = 320 * 1024 * 16;
 
 fn client() -> reqwest::Client {
     reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(20))
+        .connect_timeout(crate::settings::net_timeout())
+        .read_timeout(crate::settings::net_timeout().max(Duration::from_secs(30)))
         .user_agent(concat!("FtpStar/", env!("CARGO_PKG_VERSION")))
         .build()
         .unwrap_or_default()

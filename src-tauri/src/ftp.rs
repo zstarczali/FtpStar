@@ -9,7 +9,7 @@ use crate::xfer::{cancel_aware, sort_entries, Entry, Progress};
 use std::io::{Read, Write};
 use std::net::ToSocketAddrs;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 use suppaftp::list::File as FtpFile;
 use suppaftp::types::FileType;
 use suppaftp::rustls::{ClientConfig, RootCertStore};
@@ -46,8 +46,6 @@ pub struct Ftp {
     pool: Mutex<Vec<Stream>>,
 }
 
-const TIMEOUT: Duration = Duration::from_secs(30);
-
 fn connect(site: &Site, password: &str) -> Result<Stream, String> {
     let host = site.host.trim();
     let port = site.port_or_default();
@@ -59,21 +57,21 @@ fn connect(site: &Site, password: &str) -> Result<Stream, String> {
     let mut s = if site.protocol == "ftps-implicit" {
         Stream::connect_secure_implicit(addr, tls()?, host).map_err(|e| e.to_string())?
     } else {
-        let s = Stream::connect_timeout(addr, Duration::from_secs(15)).map_err(|e| e.to_string())?;
+        let s = Stream::connect_timeout(addr, crate::settings::net_timeout()).map_err(|e| e.to_string())?;
         if site.protocol == "ftps" {
             s.into_secure(tls()?, host).map_err(|e| format!("TLS: {e}"))?
         } else {
             s
         }
     };
-    let _ = s.get_ref().set_read_timeout(Some(TIMEOUT));
-    let _ = s.get_ref().set_write_timeout(Some(TIMEOUT));
+    let _ = s.get_ref().set_read_timeout(Some(crate::settings::net_timeout()));
+    let _ = s.get_ref().set_write_timeout(Some(crate::settings::net_timeout()));
     let user = if site.user.trim().is_empty() { "anonymous" } else { site.user.trim() };
     s.login(user, password).map_err(|e| e.to_string())?;
     let _ = s.opts("UTF8", Some("ON"));
     s.transfer_type(FileType::Binary).map_err(|e| e.to_string())?;
     if site.active {
-        s = s.active_mode(TIMEOUT);
+        s = s.active_mode(crate::settings::net_timeout());
     } else {
         s.set_mode(Mode::Passive);
         // servers behind NAT often announce their private address in PASV
