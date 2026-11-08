@@ -21,11 +21,12 @@ Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .
   - Microsoft OneDrive through Microsoft Graph with device-code sign-in; large files go up in 5 MiB pieces of an upload session.
 - **Two panes**: local files on the left, the server on the right, a tab for every connection (with a colour per site).
 - **Views**: details, small icons or large icons per pane, with **image thumbnails** (also for files on the server).
-- **Transfer queue**: parallel transfers per connection, progress, speed and time left, stop, retry failed. Folders are transferred with everything in them.
+- **Transfer queue**: parallel transfers per connection, progress, speed and time left, stop, retry failed. While the queue is hidden, the status bar shows the overall progress. Folders are transferred with everything in them.
 - **Cut, copy and paste** (Ctrl+X / C / V) in both panes: copy or move within a side, upload or download between the sides, server to server between tabs. Files copied in FtpStar can be pasted in Explorer / Finder and the other way round.
 - **Drag and drop** between the panes or onto a folder, and from Explorer / Finder onto the remote pane.
 - **Properties** (right-click or Alt+Enter): size with folder totals, date, permissions, URL and an image preview.
 - **When the target exists**: ask, overwrite, skip, or only newer files.
+- **Copy only the new files** from one side to the other, with subfolders (optionally the newer ones too); a dialog lists what will be copied first.
 - **Compare**: highlights files that exist only on one side, differ, or are newer; one click selects them for transfer.
 - **Double-click opens a file**; a remote file opens from a temporary copy and is uploaded again whenever it is saved.
 - **Site Manager** with folders, search, duplicate, notes, start folders; **Quick connect**.

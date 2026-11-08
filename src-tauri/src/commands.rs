@@ -522,9 +522,19 @@ pub fn finish_splash(app: &AppHandle) {
     }
 }
 
+/// How long the splash screen stays on screen at least (as in GitStar).
+pub const SPLASH_TIME: std::time::Duration = std::time::Duration::from_secs(3);
+static STARTED: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+/// Called at start-up: the splash time is counted from here.
+pub fn mark_start() {
+    let _ = STARTED.set(std::time::Instant::now());
+}
+
 #[tauri::command]
 pub async fn ui_ready(app: AppHandle) {
-    // keep the splash on screen for a moment, even when the UI is fast
-    tokio::time::sleep(std::time::Duration::from_millis(900)).await;
+    // the UI is usually ready long before: the splash stays for SPLASH_TIME
+    let shown = STARTED.get().map(|s| s.elapsed()).unwrap_or_default();
+    tokio::time::sleep(SPLASH_TIME.saturating_sub(shown)).await;
     finish_splash(&app);
 }
