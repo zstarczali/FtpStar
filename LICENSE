@@ -26,15 +26,14 @@ licensed, not sold.
 
 3. Third-party components
    The Software includes open source components (such as Tauri, Rust crates
-   and WebView2 runtime bindings) that remain under their own licenses. It
-   runs the Git executable installed on your computer, which is licensed
-   separately. Nothing in this license limits your rights under those
-   licenses.
+   and WebView2 runtime bindings) that remain under their own licenses.
+   Nothing in this license limits your rights under those licenses.
 
-4. AI services
-   Optional AI features send diffs and commit data to the AI provider you
-   configure (Anthropic or DeepSeek) using your own API key. Your use of
-   those services is governed by the provider's terms.
+4. Servers and cloud services
+   The Software connects only to the servers and cloud services you
+   configure (FTP, SFTP, Amazon S3 or S3-compatible storage, Microsoft
+   OneDrive), with your own credentials. Your use of those services is
+   governed by their providers' terms.
 
 5. No warranty
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
