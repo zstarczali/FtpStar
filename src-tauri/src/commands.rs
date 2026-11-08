@@ -387,6 +387,17 @@ pub fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
     tauri_plugin_window_state::StateFlags::all() & !tauri_plugin_window_state::StateFlags::VISIBLE
 }
 
+/// Text on the system clipboard (empty when there is none).
+#[tauri::command]
+pub async fn clipboard_text() -> Result<String, String> {
+    tokio::task::spawn_blocking(|| {
+        let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+        Ok(cb.get_text().unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Files copied in Explorer / Finder (CF_HDROP / file URLs).
 #[tauri::command]
 pub async fn clipboard_files() -> Result<Vec<String>, String> {

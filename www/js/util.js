@@ -390,9 +390,12 @@ export function editMenu(e) {
   const paste = async () => {
     field.focus();
     try {
-      const txt = await navigator.clipboard.readText();
+      // read in Rust: navigator.clipboard.readText() makes WebView2 ask for permission
+      const txt = await invoke('clipboard_text');
+      if (!txt) return;
+      field.focus();
       if (!document.execCommand('insertText', false, txt)) field.setRangeText(txt, field.selectionStart, field.selectionEnd, 'end');
-    } catch { document.execCommand('paste'); }
+    } catch { /* nothing to paste */ }
   };
   contextMenu(e, [
     field ? { label: t('Kivágás'), disabled: !selText || pw, action: () => { field.focus(); document.execCommand('cut'); } } : null,
