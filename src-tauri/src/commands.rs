@@ -39,6 +39,12 @@ pub fn save_settings(state: State<'_, AppState>, settings: Settings) -> Result<(
     state.store.save_settings(settings)
 }
 
+/// The UI tells the backend which language to use for its messages.
+#[tauri::command]
+pub fn set_ui_language(lang: String) {
+    crate::settings::set_english(lang == "en");
+}
+
 #[tauri::command]
 pub fn get_sites(state: State<'_, AppState>) -> Vec<Site> {
     state.store.sites()
