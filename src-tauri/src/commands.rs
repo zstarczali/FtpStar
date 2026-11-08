@@ -442,6 +442,60 @@ pub async fn clipboard_files() -> Result<Vec<String>, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// Puts local files on the system clipboard, so they can be pasted in Explorer / Finder too.
+#[tauri::command]
+pub async fn clipboard_set_files(paths: Vec<String>) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+        cb.set().file_list(&paths).map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Copies a local file or folder (with everything in it) to `to`.
+pub fn copy_tree(from: &std::path::Path, to: &std::path::Path) -> Result<(), String> {
+    let md = std::fs::metadata(from).map_err(|e| format!("{}: {e}", from.display()))?;
+    if !md.is_dir() {
+        std::fs::copy(from, to).map_err(|e| format!("{}: {e}", from.display()))?;
+        return Ok(());
+    }
+    // a folder cannot be copied into itself
+    if let (Ok(a), Ok(b)) = (from.canonicalize(), to.parent().map(|p| p.canonicalize()).unwrap_or_else(|| Err(std::io::ErrorKind::NotFound.into()))) {
+        if b.starts_with(&a) {
+            return Err(crate::settings::tr("Egy mappa nem másolható önmagába", "A folder cannot be copied into itself"));
+        }
+    }
+    std::fs::create_dir_all(to).map_err(|e| format!("{}: {e}", to.display()))?;
+    for e in std::fs::read_dir(from).map_err(|e| format!("{}: {e}", from.display()))? {
+        let e = e.map_err(|e| e.to_string())?;
+        copy_tree(&e.path(), &to.join(e.file_name()))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn local_copy(from: String, to: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || copy_tree(std::path::Path::new(&from), std::path::Path::new(&to)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Moves a local file or folder; across drives it is copied, then removed.
+#[tauri::command]
+pub async fn local_move(from: String, to: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        if std::fs::rename(&from, &to).is_ok() {
+            return Ok(());
+        }
+        let src = std::path::Path::new(&from);
+        copy_tree(src, std::path::Path::new(&to))?;
+        if src.is_dir() { std::fs::remove_dir_all(src) } else { std::fs::remove_file(src) }.map_err(|e| format!("{from}: {e}"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Creates a window declared in tauri.conf.json (with `create: false`).
 pub fn create_window(app: &AppHandle, label: &str) -> Result<(), String> {
     let cfg = app.config().app.windows.iter().find(|w| w.label == label).cloned().ok_or_else(|| format!("no '{label}' window"))?;

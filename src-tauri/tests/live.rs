@@ -75,3 +75,17 @@ fn mlsd_lines() {
     assert!(parse_mlsd("type=cdir;modify=20240102030405; .").is_none());
     assert!(parse_mlsd("type=pdir; ..").is_none());
 }
+
+#[test]
+fn local_copy_tree() {
+    let dir = std::env::temp_dir().join(format!("ftpstar-copy-{}", std::process::id()));
+    let src = dir.join("src");
+    std::fs::create_dir_all(src.join("sub")).unwrap();
+    std::fs::write(src.join("a.txt"), "a").unwrap();
+    std::fs::write(src.join("sub").join("b.txt"), "b").unwrap();
+    ftpstar_lib::commands::copy_tree(&src, &dir.join("dst")).unwrap();
+    assert_eq!(std::fs::read_to_string(dir.join("dst").join("sub").join("b.txt")).unwrap(), "b");
+    // into itself: refused
+    assert!(ftpstar_lib::commands::copy_tree(&src, &src.join("sub").join("again")).is_err());
+    let _ = std::fs::remove_dir_all(&dir);
+}

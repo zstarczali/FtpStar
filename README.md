@@ -4,7 +4,7 @@
 
 A two-pane file transfer client for **FTP, FTPS, SFTP, Amazon S3 (and S3-compatible storage) and Microsoft OneDrive**, built with Tauri 2 and Rust. A sibling of [GitStar](https://github.com/zstarczali/GitStar): the same look, the same themes.
 
-Current version **0.2.0** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
+Current version **0.3.0** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
 
 Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). Freeware.
 
@@ -22,7 +22,9 @@ Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .
 - **Two panes**: local files on the left, the server on the right, a tab for every connection (with a colour per site).
 - **Views**: details, small icons or large icons per pane, with **image thumbnails** (also for files on the server).
 - **Transfer queue**: parallel transfers per connection, progress, speed and time left, stop, retry failed. Folders are transferred with everything in them.
-- **Drag and drop** between the panes or onto a folder, and from Explorer / Finder onto the remote pane; **Ctrl+V** uploads files copied in Explorer / Finder.
+- **Cut, copy and paste** (Ctrl+X / C / V) in both panes: copy or move within a side, upload or download between the sides, server to server between tabs. Files copied in FtpStar can be pasted in Explorer / Finder and the other way round.
+- **Drag and drop** between the panes or onto a folder, and from Explorer / Finder onto the remote pane.
+- **Properties** (right-click or Alt+Enter): size with folder totals, date, permissions, URL and an image preview.
 - **When the target exists**: ask, overwrite, skip, or only newer files.
 - **Compare**: highlights files that exist only on one side, differ, or are newer; one click selects them for transfer.
 - **Double-click opens a file**; a remote file opens from a temporary copy and is uploaded again whenever it is saved.

@@ -22,6 +22,8 @@ const S = {
   info: { version: '' },
   donationVisible: false,
   update: null,
+  /** FtpStar's own clipboard: {cut, side, tabId, session, dir, items, names} */
+  clip: null,
 };
 
 export const PROTOS = {
@@ -655,7 +657,7 @@ function renderRows(tab, side) {
   }
   for (const e of list) {
     const mark = compareMark(tab, side, e);
-    const cls = (pane.sel.has(e.name) ? '.sel' : '') + (pane.cursor === e.name ? '.cur' : '') + (e.dir ? '.dir' : '') + (mark ? '.cmp-' + mark : '');
+    const cls = (pane.sel.has(e.name) ? '.sel' : '') + (pane.cursor === e.name ? '.cur' : '') + (e.dir ? '.dir' : '') + (mark ? '.cmp-' + mark : '') + (isCut(tab, side, e) ? '.cut' : '');
     if (tiles) {
       const isImg = !e.dir && IMG_EXT.test(e.name);
       const img = isImg ? h('img', { alt: '', draggable: 'false' }) : null;
@@ -840,7 +842,12 @@ function paneMenu(e, tab, side) {
     one?.dir ? { label: t('Megnyitás'), icon: 'folder', action: () => openEntry(tab, side, one.name) } : null,
     !remote && one && !one.dir ? { label: t('Megnyitás alapértelmezett programmal'), icon: 'file', action: () => invoke('open_path', { path: full }).catch((er) => toast(er, 'err')) } : null,
     remote && one && !one.dir ? { label: t('Szerkesztés (automatikus visszatöltés)'), icon: 'edit', action: () => editRemote(tab) } : null,
+    sel.length ? { label: t('Tulajdonságok…'), icon: 'info', key: 'Alt+Enter', action: () => infoDlg(tab, side) } : null,
     sel.length ? { label: remote ? t('Letöltés ({0})', sel.length) : t('Feltöltés ({0})', sel.length), icon: remote ? 'download' : 'upload', disabled: !on, key: 'F5', action: () => transfer(tab, side) } : null,
+    '-',
+    sel.length ? { label: t('Kivágás'), icon: 'cut', key: 'Ctrl+X', disabled: remote && !on, action: () => clipSel(tab, side, true) } : null,
+    sel.length ? { label: t('Másolás'), icon: 'copy', key: 'Ctrl+C', disabled: remote && !on, action: () => clipSel(tab, side, false) } : null,
+    { label: t('Beillesztés'), icon: 'paste', key: 'Ctrl+V', disabled: remote ? !on : !pane.path, action: () => pasteTo(tab, side) },
     '-',
     { label: t('Új mappa…'), icon: 'folderPlus', key: 'F7', disabled: remote && !on, action: () => mkdirDlg(tab, side) },
     one ? { label: t('Átnevezés…'), icon: 'rename', key: 'F2', action: () => renameDlg(tab, side) } : null,
@@ -909,10 +916,13 @@ document.addEventListener('keydown', (e) => {
   const order = rowsOrder(tab, side);
   const hasUp = sideParent(side, pane.path) != null && !pane.filter;
   if (mod && e.key.toLowerCase() === 'r') { e.preventDefault(); listPane(tab, 'local'); listPane(tab, 'remote'); return; }
-  if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteFiles(tab); return; }
+  if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); clipSel(tab, side, false); return; }
+  if (mod && e.key.toLowerCase() === 'x') { e.preventDefault(); clipSel(tab, side, true); return; }
+  if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteTo(tab, side); return; }
   if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); pane.sel = new Set(order); renderRows(tab, side); renderToolbar(); return; }
   switch (e.key) {
     case 'Tab': e.preventDefault(); setFocus(tab, side === 'local' ? 'remote' : 'local'); return;
+    case 'Escape': if (S.clip?.cut) { e.preventDefault(); S.clip = null; repaintRows(); } return;
     case 'Backspace': e.preventDefault(); goUp(tab, side); return;
     case 'ArrowLeft': case 'ArrowRight':
       if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(tab, side); return; }
@@ -920,7 +930,7 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       moveCursor(tab, side, e, e.key === 'ArrowRight' ? 1 : -1);
       return;
-    case 'Enter': e.preventDefault(); if (pane.cursor) openEntry(tab, side, pane.cursor); else if (hasUp) goUp(tab, side); return;
+    case 'Enter': e.preventDefault(); if (e.altKey) { infoDlg(tab, side); return; } if (pane.cursor) openEntry(tab, side, pane.cursor); else if (hasUp) goUp(tab, side); return;
     case 'Delete': e.preventDefault(); deleteSel(tab, side); return;
     case 'F2': e.preventDefault(); renameDlg(tab, side); return;
     case 'F5': e.preventDefault(); if (tab.session) transfer(tab, side); return;
@@ -1048,6 +1058,7 @@ async function transfer(tab, fromSide, { dstPath = null, items = null } = {}) {
       const target = sideJoin(toSide, dstDir, it.name);
       if (!it.dir) {
         const job = mkJob(tab, up, it.path, target, it.name, it.size);
+        job.item = it.path;
         const ex = dstEntries.find((x) => x.name === it.name && !x.dir);
         if (ex) conflicts.push({ job, src: it, dst: ex });
         jobs.push(job);
@@ -1069,6 +1080,7 @@ async function transfer(tab, fromSide, { dstPath = null, items = null } = {}) {
       }
       for (const f of walked.filter((x) => !x.dir)) {
         const job = mkJob(tab, up, sideJoinRel(fromSide, it.path, f.rel), sideJoinRel(toSide, target, f.rel), `${it.name}/${f.rel}`, f.size);
+        job.item = it.path;
         const ex = existing.get(f.rel);
         if (ex) conflicts.push({ job, src: f, dst: ex });
         jobs.push(job);
@@ -1094,26 +1106,31 @@ async function transfer(tab, fromSide, { dstPath = null, items = null } = {}) {
           { label: t('Felülírás'), value: 'overwrite', primary: true },
         ],
       });
-      if (!choice) return;
+      if (!choice) return null;
     }
     if (choice === 'skip') skip = new Set(conflicts.map((c) => c.job));
     if (choice === 'newer') skip = new Set(conflicts.filter((c) => !((c.src.mtime || 0) > (c.dst.mtime || 0) + 1 || (c.src.size !== c.dst.size && !c.dst.mtime))).map((c) => c.job));
   }
   const add = jobs.filter((j) => !skip.has(j));
-  if (!add.length) { toast(t('Nincs mit átvinni (minden fájl kihagyva).')); listPane(tab, toSide); return; }
+  const skipped = jobs.filter((j) => skip.has(j));
+  if (!add.length) { toast(t('Nincs mit átvinni (minden fájl kihagyva).')); listPane(tab, toSide); return { jobs: add, skipped }; }
   S.queue.push(...add);
   if (!S.queueOpen && add.length > 1) { S.queueOpen = true; }
   renderQueue();
   renderToolbar();
   pump();
+  return { jobs: add, skipped };
 }
 
 function mkJob(tab, up, srcPath, dstPath, name, size) {
-  return {
+  const job = {
     id: uid(), tabId: tab.id, dir: up ? 'up' : 'down',
     local: up ? srcPath : dstPath, remote: up ? dstPath : srcPath,
     name, size: size || 0, done: 0, status: 'queued', error: null, speed: 0, started: 0, last: null, el: null,
   };
+  // resolved when the job ends (done, failed or stopped)
+  job.finished = new Promise((r) => { job.fin = r; });
+  return job;
 }
 
 function pump() {
@@ -1152,6 +1169,7 @@ async function runJob(tab, job) {
   job.speed = job.status === 'done' ? (job.size / Math.max(0.001, (Date.now() - job.started) / 1000)) : 0;
   updateJobRow(job);
   renderQueueHead();
+  job.fin();
   refreshLater(tab, job.dir === 'up' ? 'remote' : 'local');
   const left = S.queue.some((j) => j.tabId === tab.id && (j.status === 'queued' || j.status === 'running'));
   if (!left) {
@@ -1165,7 +1183,7 @@ async function runJob(tab, job) {
 }
 
 function cancelJob(job) {
-  if (job.status === 'queued') { job.status = 'cancelled'; updateJobRow(job); renderQueueHead(); }
+  if (job.status === 'queued') { job.status = 'cancelled'; updateJobRow(job); renderQueueHead(); job.fin(); }
   else if (job.status === 'running') invoke('cancel_transfer', { id: job.id });
 }
 
@@ -1197,12 +1215,260 @@ async function uploadPaths(tab, paths, folder = null) {
   if (items.length) transfer(tab, 'local', { items, dstPath: folder });
 }
 
-/** Ctrl+V: files copied in Explorer / Finder are uploaded to the remote folder. */
-async function pasteFiles(tab) {
-  let paths = [];
-  try { paths = await invoke('clipboard_files'); } catch (er) { toast(String(er), 'err'); return; }
-  if (!paths.length) { toast(t('A vágólapon nincsenek fájlok.')); return; }
-  uploadPaths(tab, paths);
+// ───────────────────────── file info ─────────────────────────
+
+/** Right click → Properties (Alt+Enter): details of the selected files, folder sizes, image preview. */
+async function infoDlg(tab, side) {
+  const pane = tab[side];
+  const sel = selectedEntries(tab, side);
+  if (!sel.length) return;
+  const remote = side === 'remote';
+  const one = sel.length === 1 ? sel[0] : null;
+  const full = one ? sideJoin(side, pane.path, one.name) : pane.path;
+  const row = (k, v, cls = '') => [h('span.k', k), h('span.v' + cls, { title: String(v ?? '') }, v ?? '–')];
+  const sizeOf = (n) => (n == null ? '–' : `${fmtSize(n)}${n >= 1024 ? ` (${n.toLocaleString()} ${t('bájt')})` : ''}`);
+  const dirs = sel.filter((e) => e.dir);
+  const files = sel.filter((e) => !e.dir);
+  // folders: everything in them is counted in the background
+  const total = h('span.v', dirs.length ? t('Számolás…') : sizeOf(files.reduce((s, e) => s + (e.size || 0), 0)));
+  const contents = h('span.v', '–');
+  const where = remote ? `${PROTOS[tab.site.protocol]?.label || ''} · ${tab.site.user ? tab.site.user + '@' : ''}${tab.site.host || tab.site.s3_bucket || tab.site.onedrive_account || ''}` : t('Helyi gép');
+  const ext = one && !one.dir && one.name.includes('.') ? one.name.split('.').pop().toUpperCase() : '';
+  const kind = one ? (one.drive ? t('Meghajtó') : one.dir ? t('Mappa') : ext ? t('{0} fájl', ext) : t('Fájl')) : t('{0} mappa, {1} fájl', dirs.length, files.length);
+  const preview = one && !one.dir && IMG_EXT.test(one.name) ? h('img.info-img', { alt: '' }) : null;
+  const info = h('div.about-info.file-info',
+    ...(one ? row(t('Név'), one.name) : row(t('Kijelölve'), t('{0} elem', sel.length))),
+    ...row(t('Típus'), kind),
+    ...row(t('Hely'), one ? sideParent(side, full) ?? pane.path : pane.path),
+    ...row(t('Kapcsolat'), where),
+    h('span.k', t('Méret')), total,
+    ...(dirs.length ? [h('span.k', t('Tartalom')), contents] : []),
+    ...(one?.mtime ? row(t('Módosítva'), `${fmtDate(one.mtime, true)}`) : []),
+    ...(one?.perms ? row(t('Jogosultságok'), one.perms, '.mono') : []),
+    ...(one?.link ? row(t('Hivatkozás'), t('Szimbolikus link')) : []),
+    ...(remote && one && tab.site.protocol !== 'onedrive' && tab.site.protocol !== 's3' ? row('URL', siteUrl(tab.site, full)) : []),
+  );
+  if (dirs.length) {
+    (async () => {
+      let size = files.reduce((s, e) => s + (e.size || 0), 0), nf = files.length, nd = 0;
+      try {
+        for (const d of dirs) {
+          const p = sideJoin(side, pane.path, d.name);
+          const w = await invoke(remote ? 'remote_walk' : 'local_walk', remote ? { session: tab.session, path: p } : { path: p });
+          for (const x of w) { if (x.dir) nd++; else { nf++; size += x.size || 0; } }
+        }
+        total.textContent = sizeOf(size);
+        contents.textContent = t('{0} fájl, {1} mappa', nf, nd);
+      } catch (er) { total.textContent = friendly(er); }
+    })();
+  }
+  if (preview) {
+    const big = 360;
+    (async () => {
+      try {
+        preview.src = remote
+          ? await invoke('remote_thumb', { session: tab.session, server: tab.site.id, path: full, fileSize: one.size || 0, mtime: one.mtime || 0, size: big })
+          : await invoke('local_thumb', { path: full, size: big });
+        preview.onload = () => { if (preview.naturalWidth) preview.title = `${preview.naturalWidth} × ${preview.naturalHeight}`; };
+      } catch { preview.remove(); }
+    })();
+  }
+  const head = h('div.info-head', icon(one ? (one.drive ? 'drive' : one.dir ? 'folder' : IMG_EXT.test(one.name) ? 'image' : fileIcon(one.name)) : 'copy'),
+    h('b', one ? one.name : t('{0} elem', sel.length)));
+  const buttons = [
+    { label: t('Útvonal másolása'), value: () => { navigator.clipboard.writeText(full); return null; } },
+    !remote && pane.path ? { label: t('Megjelenítés a Fájlkezelőben'), value: () => { invoke('reveal_path', { path: full }).catch((er) => toast(er, 'err')); return null; } } : null,
+    { label: t('Bezárás'), value: null, primary: true },
+  ].filter(Boolean);
+  await modal({ title: t('Tulajdonságok'), body: h('div', head, preview, info), buttons });
+}
+
+// ───────────────────────── cut / copy / paste ─────────────────────────
+// Ctrl+C / Ctrl+X keep the selection in S.clip (local files also go on the system
+// clipboard, so Explorer / Finder can paste them). Ctrl+V:
+//   same side       → copy / move (on the server: rename; copy goes through a temp folder)
+//   other side      → upload / download through the queue (cut: the source is removed after)
+//   another server  → download to a temp folder, then upload
+// Files copied in Explorer / Finder after that win over our own clipboard.
+
+const normPath = (p) => String(p).replace(/[\\/]+$/, '').toLowerCase();
+const parentOf = (p) => String(p).replace(/[\\/]+$/, '').replace(/[\\/][^\\/]*$/, '');
+const samePaths = (a, b) => a.length === b.length && a.every((p, i) => normPath(p) === normPath(b[i]));
+
+function isCut(tab, side, e) {
+  const c = S.clip;
+  return !!c?.cut && c.side === side && (side === 'local' || c.tabId === tab.id) && normPath(c.dir) === normPath(tab[side].path) && c.names.has(e.name);
+}
+
+function repaintRows() {
+  const tab = cur();
+  if (tab) { renderRows(tab, 'local'); renderRows(tab, 'remote'); }
+}
+
+/** Panes (in every tab) that show `dir` are listed again. */
+function refreshDir(side, dir, tabId = null) {
+  for (const tab of S.tabs) if ((side === 'local' || tab.id === tabId) && normPath(tab[side].path) === normPath(dir)) listPane(tab, side);
+}
+
+async function clipSel(tab, side, cut) {
+  const pane = tab[side];
+  const sel = selectedEntries(tab, side);
+  if (!sel.length || (side === 'remote' && !tab.session)) return;
+  const items = sel.map((e) => ({ name: e.name, dir: e.dir, size: e.size, mtime: e.mtime, path: sideJoin(side, pane.path, e.name) }));
+  S.clip = { cut, side, tabId: tab.id, session: tab.session, dir: pane.path, items, names: new Set(items.map((i) => i.name)) };
+  try {
+    if (side === 'local') await invoke('clipboard_set_files', { paths: items.map((i) => i.path) });
+    else await navigator.clipboard.writeText(items.map((i) => i.path).join('\n'));
+  } catch { /* our own clipboard still works */ }
+  // what the system clipboard holds now: other files there later mean a copy in Explorer / Finder
+  try { S.clip.os = await invoke('clipboard_files'); } catch { S.clip.os = []; }
+  repaintRows();
+  toast(cut ? t('{0} elem kivágva – Ctrl+V a beillesztéshez', items.length) : t('{0} elem másolva – Ctrl+V a beillesztéshez', items.length));
+}
+
+async function pasteTo(tab, side) {
+  const pane = tab[side];
+  if (side === 'remote' && !tab.session) { toast(t('Nincs kapcsolat.'), 'err'); return; }
+  if (side === 'local' && !pane.path) { toast(t('Válassz egy helyi mappát.'), 'err'); return; }
+  let osFiles = [];
+  try { osFiles = await invoke('clipboard_files'); } catch { /* no files */ }
+  const c = S.clip;
+  // ours, unless other files were copied in Explorer / Finder since
+  if (c && (!osFiles.length || samePaths(osFiles, c.os || []))) return pasteClip(tab, side, c);
+  if (!osFiles.length) { toast(t('A vágólapon nincsenek fájlok.')); return; }
+  const items = await localItems(osFiles);
+  if (side === 'remote') transfer(tab, 'local', { items, dstPath: pane.path });
+  else localPaste(tab, items, false);
+}
+
+async function localItems(paths) {
+  const items = [];
+  for (const p of paths) {
+    const st = await invoke('local_stat', { path: p });
+    if (st.exists) items.push({ name: p.replace(/[\\/]+$/, '').split(/[\\/]/).pop(), dir: st.dir, size: st.size, mtime: st.mtime, path: p });
+  }
+  return items;
+}
+
+/** "name - copy.txt", "name - copy (2).txt"… a name not in `taken` (lower-case names). */
+function copyName(name, dir, taken) {
+  const dot = dir ? -1 : name.lastIndexOf('.');
+  const base = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
+  for (let n = 1; ; n++) {
+    const cand = `${base} - ${t('másolat')}${n > 1 ? ` (${n})` : ''}${ext}`;
+    if (!taken.has(cand.toLowerCase())) { taken.add(cand.toLowerCase()); return cand; }
+  }
+}
+
+/** Waits for the queued jobs; returns the items whose every file arrived. */
+async function arrived(res, items) {
+  if (!res) return [];
+  await Promise.all(res.jobs.map((j) => j.finished));
+  return items.filter((it) => !res.skipped.some((j) => j.item === it.path) && res.jobs.every((j) => j.item !== it.path || j.status === 'done'));
+}
+
+async function pasteClip(tab, side, c) {
+  if (c.side === 'local' && side === 'local') return localPaste(tab, c.items, c.cut);
+  const srcTab = c.side === 'local' ? tab : S.tabs.find((x) => x.id === c.tabId);
+  if (!srcTab?.session) { toast(t('A forrás kapcsolat már nincs meg; jelöld ki és másold újra a fájlokat.'), 'err'); return; }
+  if (c.side === 'remote' && side === 'remote') return srcTab === tab && c.cut ? remoteMove(tab, c) : remoteCopy(srcTab, tab, c);
+  if (c.cut) { S.clip = null; repaintRows(); }
+  // between the two sides: through the queue
+  const res = c.side === 'local' ? await transfer(tab, 'local', { items: c.items, dstPath: tab.remote.path })
+    : await transfer(srcTab, 'remote', { items: c.items, dstPath: tab.local.path });
+  const ok = await arrived(res, c.items);
+  listPane(tab, side);
+  if (c.cut) await removeSources(c, srcTab, ok);
+}
+
+/** After a cut: the sources that arrived are removed. */
+async function removeSources(c, srcTab, ok) {
+  for (const it of ok) {
+    try {
+      if (c.side === 'local') await invoke('local_remove', { path: it.path });
+      else await invoke('remote_remove', { session: srcTab.session, path: it.path, dir: it.dir });
+    } catch (er) { toast(`${it.name}: ${friendly(er)}`, 'err'); }
+  }
+  if (ok.length < c.items.length) toast(t('{0} elem nem került át, ezek a helyükön maradtak.', c.items.length - ok.length), 'err');
+  refreshDir(c.side, c.dir, srcTab.id);
+}
+
+async function localPaste(tab, items, cut) {
+  const dstDir = tab.local.path;
+  const taken = new Set((await invoke('local_list', { path: dstDir, showHidden: true }).catch(() => [])).map((e) => e.name.toLowerCase()));
+  const plan = [];
+  for (const it of items) {
+    const sameDir = normPath(parentOf(it.path)) === normPath(dstDir);
+    if (sameDir && cut) continue; // moved onto itself: nothing to do
+    if (it.dir && (normPath(dstDir) + '/').replace(/\\/g, '/').startsWith((normPath(it.path) + '/').replace(/\\/g, '/'))) {
+      toast(t('Egy mappa nem másolható önmagába'), 'err');
+      continue;
+    }
+    plan.push({ it, name: sameDir ? copyName(it.name, it.dir, taken) : it.name, exists: !sameDir && taken.has(it.name.toLowerCase()) });
+  }
+  const clash = plan.filter((p) => p.exists);
+  if (clash.length) {
+    const names = clash.slice(0, 6).map((p) => (p.it.dir ? '📁 ' : '') + p.name).join('\n') + (clash.length > 6 ? `\n… (+${clash.length - 6})` : '');
+    const choice = await modal({
+      title: t('A fájl már létezik'),
+      body: h('div.desc', t('{0} elem már létezik a célmappában:\n\n{1}', clash.length, names)),
+      buttons: [{ label: t('Mégse'), value: null }, { label: t('Kihagyás'), value: 'skip' }, { label: t('Felülírás'), value: 'overwrite', primary: true }],
+    });
+    if (!choice) return;
+    if (choice === 'skip') plan.splice(0, plan.length, ...plan.filter((p) => !p.exists));
+  }
+  if (cut) { S.clip = null; repaintRows(); }
+  if (!plan.length) return;
+  setBusy(true);
+  const done = [];
+  for (const p of plan) {
+    try {
+      await invoke(cut ? 'local_move' : 'local_copy', { from: p.it.path, to: sideJoin('local', dstDir, p.name) });
+      done.push(p.name);
+    } catch (er) { toast(`${p.it.name}: ${friendly(er)}`, 'err'); }
+  }
+  setBusy(false);
+  if (done.length) toast(cut ? t('{0} elem áthelyezve', done.length) : t('{0} elem beillesztve', done.length), 'ok');
+  tab.local.sel = new Set(done);
+  if (done.length) tab.local.cursor = done[0];
+  refreshDir('local', dstDir);
+  if (cut) for (const d of new Set(plan.map((p) => parentOf(p.it.path)))) refreshDir('local', d);
+}
+
+/** Cut and paste on the same server: a rename. */
+async function remoteMove(tab, c) {
+  const dstDir = tab.remote.path;
+  S.clip = null;
+  if (normPath(c.dir) === normPath(dstDir)) { repaintRows(); return; }
+  setBusy(true);
+  const done = [];
+  for (const it of c.items) {
+    if (it.dir && (dstDir + '/').startsWith(it.path.replace(/\/+$/, '') + '/')) { toast(t('Egy mappa nem helyezhető át önmagába.'), 'err'); continue; }
+    try {
+      await invoke('remote_rename', { session: tab.session, from: it.path, to: sideJoin('remote', dstDir, it.name), dir: it.dir });
+      done.push(it.name);
+    } catch (er) { toast(`${it.name}: ${friendly(er)}`, 'err'); }
+  }
+  setBusy(false);
+  if (done.length) toast(t('{0} elem áthelyezve', done.length), 'ok');
+  tab.remote.sel = new Set(done);
+  await listPane(tab, 'remote');
+}
+
+/** Copy on a server, or from one server to another: through a temporary local folder. */
+async function remoteCopy(srcTab, dstTab, c) {
+  if (c.cut) { S.clip = null; repaintRows(); }
+  const tmp = await invoke('temp_dir');
+  const got = await arrived(await transfer(srcTab, 'remote', { items: c.items, dstPath: tmp }), c.items);
+  if (!got.length) { invoke('local_remove', { path: tmp }).catch(() => {}); return; }
+  const dstDir = dstTab.remote.path;
+  const sameDir = srcTab === dstTab && normPath(c.dir) === normPath(dstDir);
+  const taken = new Set(dstTab.remote.entries.map((e) => e.name.toLowerCase()));
+  const items = got.map((it) => ({ ...it, src: it, name: sameDir ? copyName(it.name, it.dir, taken) : it.name, path: sideJoin('local', tmp, it.name) }));
+  const sent = await arrived(await transfer(dstTab, 'local', { items, dstPath: dstDir }), items);
+  invoke('local_remove', { path: tmp }).catch(() => {});
+  listPane(dstTab, 'remote');
+  if (c.cut) await removeSources(c, srcTab, sent.map((i) => i.src));
 }
 
 listen('tauri://drag-drop', async (ev) => {

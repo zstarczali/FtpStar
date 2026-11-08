@@ -1,13 +1,17 @@
 FtpStar Installation Guide
 ==========================
 
-Version 0.2.0
+Version 0.3.0
 -------------
 A two-pane FTP, FTPS, SFTP, Amazon S3 (and S3-compatible) and Microsoft
 OneDrive client with a transfer queue, folder compare and remote
 editing. A sibling of GitStar.
 
-New in 0.2.0: every pane can show details, small icons or large icons
+New in 0.3.0: cut, copy and paste (Ctrl+X / Ctrl+C / Ctrl+V or
+right-click) in both panes, and Properties (right-click or Alt+Enter)
+with sizes, dates, permissions, folder totals and an image preview.
+
+Since 0.2.0: every pane can show details, small icons or large icons
 (the buttons next to the filter, or right-click); in the icon views
 images are shown as thumbnails, also on the server.
 
@@ -114,8 +118,22 @@ Using it
 Double-click (or Enter) opens a file: a remote file is downloaded to a
 temporary copy and uploaded again whenever it is saved. F5, the
 Upload / Download buttons or dragging transfer the selection to the
-other pane. Files copied in Explorer / Finder can be pasted with Ctrl+V
-to upload them.
+other pane.
+
+Cut, copy and paste work in both panes (Ctrl+X, Ctrl+C, Ctrl+V or
+right-click):
+- in the same pane the files are copied or moved (a copy in the same
+  folder gets a "- copy" name; on a server a move is a rename),
+- into the other pane they are uploaded or downloaded through the queue;
+  after a cut the originals are removed once they arrived,
+- into another connection's tab they go server to server, through a
+  temporary folder on this computer.
+Local files copied in FtpStar can be pasted in Explorer / Finder, and
+files copied there can be pasted into either pane. Esc cancels a cut.
+
+Right-click > Properties (Alt+Enter) shows the name, location, type,
+size (folders are counted), date, permissions and, for images, a
+preview.
 
 Update
 ------

@@ -1,6 +1,20 @@
 FtpStar - What's new
 ====================
 
+0.3.0
+-----
+- Cut, copy and paste in both panes: Ctrl+X / Ctrl+C / Ctrl+V or the
+  right-click menu. Within a pane files are copied or moved (on the
+  server a move is a rename), between the panes they go through the
+  transfer queue, between two connections through a temporary folder.
+  After a cut the originals are removed only once they arrived; cut
+  files are shown dimmed until then, Esc cancels.
+- Local files copied in FtpStar go on the system clipboard as well,
+  so they can be pasted in Explorer / Finder; files copied there can
+  be pasted into the local pane too (before: only the remote one).
+- Properties (right-click or Alt+Enter): name, location, type, size
+  with folder totals, date, permissions, URL, and a preview of images.
+
 0.2.0
 -----
 - Views for every pane: details, small icons and large icons (buttons
