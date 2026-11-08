@@ -8,9 +8,6 @@ Current version **0.4.0** · **[Website and downloads](https://www.c64va.pro/ftp
 
 Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). Freeware.
 
-![FtpStar: a local folder and an FTPS server side by side](docs/screenshot-main.webp)
-
-![Large icon view with thumbnails of the images on the server](docs/screenshot-thumbnails.webp)
 
 ## Features
 
