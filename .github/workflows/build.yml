@@ -1,0 +1,102 @@
+# Builds the FtpStar installers for every platform.
+# Runs ONLY when started by hand: GitHub → Actions → "Build installers" → Run workflow
+# (or: gh workflow run build.yml --ref <branch>). There is no push / PR trigger.
+#
+# Installers (unsigned):
+#   Windows x64    NSIS .exe
+#   Windows ARM64  NSIS .exe (cross-compiled on x64)
+#   macOS ARM64    .dmg (Apple Silicon)
+#   macOS x64      .dmg (Intel, cross-compiled on the ARM runner)
+#   Linux x64      .deb, .rpm, .AppImage
+name: Build installers
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bundles: nsis
+          - name: Windows ARM64
+            os: windows-latest
+            target: aarch64-pc-windows-msvc
+            bundles: nsis
+          - name: macOS ARM64
+            os: macos-latest
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - name: macOS x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+            bundles: dmg
+          - name: Linux x64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            bundles: deb,rpm,appimage
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - name: Install Tauri CLI
+        run: npm ci
+
+      - name: Build
+        run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: FtpStar-${{ matrix.target }}
+          if-no-files-found: error
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
+            src-tauri/target/${{ matrix.target }}/release/bundle/rpm/*.rpm
+            src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+
+      - name: Upload installation guide
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FtpStar-installation-guide
+          if-no-files-found: error
+          path: |
+            readme.txt
+            whatsnew.txt
+            LICENSE
