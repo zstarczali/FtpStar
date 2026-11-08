@@ -1503,12 +1503,20 @@ async function aboutDlg() {
   await modal({
     title: t('Névjegy'),
     body: h('div.about',
-      h('div.about-hero', h('div.about-logo', h('img', { src: 'img/icon.svg', alt: '' })), h('div.about-name', 'FtpStar'), h('div.about-ver', 'v' + S.info.version)),
-      h('p.about-tag', t('FTP, FTPS, SFTP, Amazon S3 (és kompatibilis) és Microsoft OneDrive kliens két panellel, átviteli sorral, mappa-összevetéssel és távoli szerkesztéssel.')),
-      h('p.note', t('A GitStar testvérprogramja.')),
-      h('div.about-free', t('Az FtpStar ingyenes (freeware). Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!')),
-      h('p.note', '© 2026 Zsolt Tarczali'),
-      h('p.note', t('Beállítások mappája: {0}', S.info.config_dir))),
+      h('div.about-hero', h('div.about-logo', h('img', { src: 'img/icon.svg', alt: '' })), h('div.about-name', 'FtpStar'), h('div.about-ver', 'v' + S.info.version),
+      h('div.about-tag', t('FTP, FTPS, SFTP, Amazon S3 (és kompatibilis) és Microsoft OneDrive kliens két panellel, átviteli sorral, mappa-összevetéssel és távoli szerkesztéssel.'))),
+    h('div.about-feats', [
+      ['server', 'FTP / FTPS'], ['lock', 'SFTP'], ['bucket', 'Amazon S3'], ['drive', 'OneDrive'],
+      ['queue', t('Átviteli sor')], ['compare', t('Összevetés')], ['edit', t('Távoli szerkesztés')], ['globe', t('Magyar / English')],
+    ].map(([ic, l]) => h('span.about-feat', icon(ic), l))),
+    h('div.about-info', [
+      [t('Verzió'), S.info.version || '?'],
+      [t('Rendszer'), S.info.os || '?'],
+      [t('Beállítások mappája'), S.info.config_dir || '?'],
+    ].map(([k, v]) => [h('span.k', k), h('span.v', { title: v }, v)])),
+    h('div.about-foot', t('Rust + Tauri 2. A GitStar testvérprogramja.')),
+    h('div.about-free', t('Az FtpStar ingyenes (freeware). Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!')),
+    h('div.about-copy', '© 2026 Zsolt Tarczali')),
     buttons: [{ label: t('Adomány'), value: 'donate' }, { label: t('Frissítések keresése'), value: 'update' },
       { label: t('Beállítások mappája'), value: 'folder' }, { label: t('Bezárás'), value: true, primary: true }],
   }).then((v) => {
