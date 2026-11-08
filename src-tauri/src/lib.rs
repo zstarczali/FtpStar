@@ -5,6 +5,7 @@ pub mod onedrive;
 pub mod s3;
 pub mod settings;
 pub mod sftp;
+mod update;
 pub mod xfer;
 
 use commands::AppState;
@@ -95,6 +96,12 @@ pub fn run() {
             commands::cancel_transfer,
             commands::onedrive_device_start,
             commands::onedrive_device_poll,
+            commands::clipboard_files,
+            commands::clipboard_text,
+            commands::set_ui_language,
+            update::check_for_update,
+            update::download_and_install_update,
+            update::update_server_check,
         ])
         .run(tauri::generate_context!())
         .expect("error while running FtpStar");

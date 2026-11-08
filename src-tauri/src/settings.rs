@@ -6,6 +6,18 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+/// Language of backend messages (errors shown in the UI). Set by the UI.
+static ENGLISH: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_english(on: bool) {
+    ENGLISH.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Picks the Hungarian or the English text.
+pub fn tr(hu: &str, en: &str) -> String {
+    if ENGLISH.load(std::sync::atomic::Ordering::Relaxed) { en.to_string() } else { hu.to_string() }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -26,6 +38,12 @@ pub struct Settings {
     pub last_local_dir: String,
     /// Small UI preferences of the frontend (column widths, panel sizes…).
     pub ui: BTreeMap<String, serde_json::Value>,
+    /// Folder with the installers (empty = update::UPDATE_SERVER_DEFAULT)
+    pub update_server: String,
+    /// Look for a new version at start
+    pub update_check: bool,
+    /// Version the user chose to skip
+    pub update_skip: String,
 }
 
 impl Default for Settings {
@@ -43,6 +61,9 @@ impl Default for Settings {
             open_sites: vec![],
             last_local_dir: String::new(),
             ui: BTreeMap::new(),
+            update_server: String::new(),
+            update_check: true,
+            update_skip: String::new(),
         }
     }
 }

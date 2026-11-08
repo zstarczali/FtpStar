@@ -93,6 +93,39 @@ fn to_entry(f: &FtpFile) -> Entry {
     }
 }
 
+/// One MLSD line: "type=file;size=12;modify=20240101120000;UNIX.mode=0644; name".
+/// The facts never contain a space, so the name is everything after the first one.
+pub fn parse_mlsd(line: &str) -> Option<Entry> {
+    let line = line.trim_end_matches(['\r', '\n']);
+    let (facts, name) = line.split_once(' ')?;
+    if name.is_empty() {
+        return None;
+    }
+    let mut e = Entry { name: name.to_string(), dir: false, size: 0, mtime: None, perms: None, link: false };
+    for fact in facts.split(';').filter(|f| !f.is_empty()) {
+        let (k, v) = fact.split_once('=').unwrap_or((fact, ""));
+        match k.to_ascii_lowercase().as_str() {
+            "type" => match v.to_ascii_lowercase().as_str() {
+                "dir" => e.dir = true,
+                "cdir" | "pdir" => return None,
+                t if t.starts_with("os.unix=slink") || t.starts_with("os.unix=symlink") => e.link = true,
+                _ => {}
+            },
+            "size" | "sizd" => e.size = v.parse().unwrap_or(0),
+            "modify" => {
+                let v = v.split('.').next().unwrap_or(v);
+                e.mtime = chrono::NaiveDateTime::parse_from_str(v, "%Y%m%d%H%M%S").ok().map(|d| d.and_utc().timestamp());
+            }
+            "unix.mode" => e.perms = u32::from_str_radix(v.trim_start_matches('0'), 8).ok().map(crate::xfer::mode_string),
+            _ => {}
+        }
+    }
+    if e.dir {
+        e.size = 0;
+    }
+    Some(e)
+}
+
 fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> impl std::future::Future<Output = Result<T, String>> {
     async move { tokio::task::spawn_blocking(f).await.map_err(|e| e.to_string())? }
 }
@@ -135,13 +168,22 @@ impl Ftp {
     pub async fn list(self: &Arc<Self>, path: &str) -> Result<Vec<Entry>, String> {
         let path = path.to_string();
         self.with_browse(move |s| {
+            // MLSD first (exact, machine-readable); LIST when MLSD is missing,
+            // empty or in a form we do not understand
             let mut out: Vec<Entry> = match s.mlsd(Some(&path)) {
-                Ok(lines) => lines.iter().filter_map(|l| FtpFile::from_mlsx_line(l).ok()).map(|f| to_entry(&f)).collect(),
-                Err(_) => {
-                    let lines = s.list(Some(&path)).map_err(|e| e.to_string())?;
-                    lines.iter().filter_map(|l| FtpFile::try_from(l.as_str()).ok()).map(|f| to_entry(&f)).collect()
-                }
+                Ok(lines) => lines.iter().filter_map(|l| parse_mlsd(l)).collect(),
+                Err(_) => vec![],
             };
+            if out.is_empty() {
+                let lines = s.list(Some(&path)).map_err(|e| e.to_string())?;
+                let lines: Vec<&String> = lines.iter().filter(|l| !l.trim().is_empty() && !l.starts_with("total ")).collect();
+                out = lines.iter().filter_map(|l| FtpFile::try_from(l.as_str()).ok()).map(|f| to_entry(&f)).collect();
+                if out.is_empty() {
+                    if let Some(first) = lines.first() {
+                        return Err(format!("Unrecognised directory listing format: {first}"));
+                    }
+                }
+            }
             out.retain(|e| e.name != "." && e.name != "..");
             sort_entries(&mut out);
             Ok(out)
