@@ -4,7 +4,9 @@
 
 A two-pane file transfer client for **FTP, FTPS, SFTP, Amazon S3 (and S3-compatible storage) and Microsoft OneDrive**, built with Tauri 2 and Rust. A sibling of [GitStar](https://github.com/zstarczali/GitStar): the same look, the same themes.
 
-Current version **0.1.0**.
+Current version **0.1.0** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
+
+Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). Freeware.
 
 ## Features
 
@@ -15,13 +17,14 @@ Current version **0.1.0**.
   - Microsoft OneDrive through Microsoft Graph with device-code sign-in; large files go up in 5 MiB pieces of an upload session.
 - **Two panes**: local files on the left, the server on the right, a tab for every connection (with a colour per site).
 - **Transfer queue**: parallel transfers per connection, progress, speed and time left, stop, retry failed. Folders are transferred with everything in them.
-- **Drag and drop** between the panes or onto a folder, and from Explorer / Finder onto the remote pane.
+- **Drag and drop** between the panes or onto a folder, and from Explorer / Finder onto the remote pane; **Ctrl+V** uploads files copied in Explorer / Finder.
 - **When the target exists**: ask, overwrite, skip, or only newer files.
 - **Compare**: highlights files that exist only on one side, differ, or are newer; one click selects them for transfer.
-- **Edit a remote file**: opens it in its default app and uploads it again whenever it is saved.
+- **Double-click opens a file**; a remote file opens from a temporary copy and is uploaded again whenever it is saved.
 - **Site Manager** with folders, search, duplicate, notes, start folders; **Quick connect**.
 - Total Commander style keys: Tab, Enter, Backspace, Space/Insert, F2, F5, F7, Del, Ctrl+A, Ctrl+R; typing jumps to a name.
 - Themes from GitStar (dark, light, AI neon, retro, modern glass), Hungarian and English UI, zoom.
+- **Self-update** from the website; closing a tab asks first.
 
 ## OneDrive setup (one time)
 
@@ -50,6 +53,17 @@ npm run build    # installers in src-tauri/target/release/bundle
 
 Tests: `cargo test` in `src-tauri`; `cargo test -- --ignored` also runs the FTP, FTPS and SFTP tests against the public test server test.rebex.net.
 
+## Releases
+
+GitHub Actions, started by hand:
+
+1. **Build installers** (`.github/workflows/build.yml`) builds every platform; the installers are the run's artifacts.
+2. **Publish** (`.github/workflows/publish.yml`) takes a successful build's run ID and uploads the installers and the installation guide to the download folder over FTPS (needs the `FTP_PASSWORD` secret). The app's self-update reads that folder.
+
+## Feedback
+
+Bug reports and ideas are welcome in [Issues](https://github.com/zstarczali/FtpStar/issues).
+
 ## License
 
-Freeware, © 2026 Zsolt Tarczali. See [LICENSE](LICENSE).
+Freeware, © 2026 Zsolt Tarczali. See [LICENSE](LICENSE). The source is public for reference; redistribution and derivative works need permission (see the license). Download the installers from the [website](https://www.c64va.pro/ftpstar.html).
