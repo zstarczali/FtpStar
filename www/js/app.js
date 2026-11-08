@@ -654,9 +654,10 @@ function openEntry(tab, side, name) {
   const e = pane.entries.find((x) => x.name === name);
   if (!e) return;
   if (e.dir) return navigate(tab, side, e.drive ? e.name : sideJoin(side, pane.path, e.name));
-  // a file: send it to the other side
-  if (tab.session) { pane.sel = new Set([name]); transfer(tab, side); }
-  else if (side === 'local') invoke('open_path', { path: sideJoin(side, pane.path, name) }).catch((er) => toast(er, 'err'));
+  // a file: open it in its default app (a remote one through a temporary
+  // copy that is uploaded again when saved); F5 / dragging transfers
+  if (side === 'local') invoke('open_path', { path: sideJoin(side, pane.path, name) }).catch((er) => toast(String(er), 'err'));
+  else if (tab.session) { pane.sel = new Set([name]); pane.cursor = name; paintSelection(tab, side); editRemote(tab); }
 }
 
 let drag = null;
