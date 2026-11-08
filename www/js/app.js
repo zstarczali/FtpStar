@@ -1296,9 +1296,9 @@ async function infoDlg(tab, side) {
 // ───────────────────────── copy only the new files ─────────────────────────
 
 /**
- * A → B: the folder shown on side A is compared with the folder on the other side
- * (with subfolders); files missing on B (and, if asked, newer on A) are queued
- * after a confirmation that lists them.
+ * The folder shown on the active side is compared with the folder on the other side
+ * (with subfolders); files missing on the target (and, if asked, newer at the source)
+ * are listed with a tick box each, and the ticked ones are queued.
  */
 async function syncNewDlg(tab, fromSide) {
   if (!tab?.session) { toast(t('Nincs kapcsolat.'), 'err'); return; }
@@ -1315,42 +1315,62 @@ async function syncNewDlg(tab, fromSide) {
   if (!S.settings.show_hidden) src = src.filter((x) => !x.rel.split('/').some((p) => p.startsWith('.')));
   const have = new Map(dst.map((x) => [x.rel.toLowerCase(), x]));
 
-  const subs = h('input', { type: 'checkbox', checked: true });
-  const newer = h('input', { type: 'checkbox' });
+  // the two options are kept for next time (subfolders on, newer off at first)
+  const subs = h('input', { type: 'checkbox', checked: uiGet('fs.syncSubs') !== '0' });
+  const newer = h('input', { type: 'checkbox', checked: uiGet('fs.syncNewer') === '1' });
   const sum = h('div.sync-sum');
+  const all = h('input', { type: 'checkbox' });
+  const allRow = h('label.chk.sync-all', all, ' ', t('Mind'));
   const list = h('div.sync-list');
-  let plan = [];
+  const MAX_ROWS = 2000;
+  let found = [], plan = [];
+  const skip = new Set(); // rel paths unticked by the user (kept when the options change)
+  // what is ticked: the summary, the "all" box and the plan
+  const recount = () => {
+    plan = found.filter((p) => !skip.has(p.f.rel));
+    const bytes = plan.reduce((a, p) => a + (p.f.size || 0), 0);
+    const nNew = plan.filter((p) => p.kind === 'new').length;
+    sum.textContent = !found.length ? t('Nincs új fájl: a cél naprakész.')
+      : plan.length ? t('{0} fájl ({1}) kerül át: {2} új, {3} újabb.', plan.length, fmtSize(bytes), nNew, plan.length - nNew)
+        : t('Nincs kijelölt fájl.');
+    all.checked = plan.length === found.length;
+    all.indeterminate = plan.length > 0 && plan.length < found.length;
+  };
   const update = () => {
-    plan = [];
+    found = [];
     for (const f of src) {
       if (f.dir || (!subs.checked && f.rel.includes('/'))) continue;
       const d = have.get(f.rel.toLowerCase());
-      if (!d) plan.push({ f, kind: 'new' });
-      else if (newer.checked && !d.dir && (f.mtime || 0) > (d.mtime || 0) + 1) plan.push({ f, kind: 'upd' });
+      if (!d) found.push({ f, kind: 'new' });
+      else if (newer.checked && !d.dir && (f.mtime || 0) > (d.mtime || 0) + 1) found.push({ f, kind: 'upd' });
     }
-    const bytes = plan.reduce((a, p) => a + (p.f.size || 0), 0);
-    const nNew = plan.filter((p) => p.kind === 'new').length;
-    sum.textContent = plan.length
-      ? t('{0} fájl ({1}) kerül át: {2} új, {3} újabb.', plan.length, fmtSize(bytes), nNew, plan.length - nNew)
-      : t('Nincs új fájl: a cél naprakész.');
-    list.replaceChildren(...plan.slice(0, 300).map((p) => h('div.' + p.kind, (p.kind === 'new' ? '+ ' : '↑ ') + p.f.rel)),
-      ...(plan.length > 300 ? [h('div', `… (+${plan.length - 300})`)] : []));
-    list.style.display = plan.length ? '' : 'none';
+    list.replaceChildren(...found.slice(0, MAX_ROWS).map((p) => {
+      const cb = h('input', { type: 'checkbox', checked: !skip.has(p.f.rel) });
+      cb.addEventListener('change', () => { if (cb.checked) skip.delete(p.f.rel); else skip.add(p.f.rel); recount(); });
+      return h('label.' + p.kind, cb, (p.kind === 'new' ? ' + ' : ' ↑ ') + p.f.rel);
+    }), ...(found.length > MAX_ROWS ? [h('div', `… (+${found.length - MAX_ROWS})`)] : []));
+    list.style.display = allRow.style.display = found.length ? '' : 'none';
+    recount();
   };
-  subs.addEventListener('change', update);
-  newer.addEventListener('change', update);
+  all.addEventListener('change', () => {
+    for (const p of found) { if (all.checked) skip.delete(p.f.rel); else skip.add(p.f.rel); }
+    for (const cb of list.querySelectorAll('input')) cb.checked = all.checked;
+    recount();
+  });
+  subs.addEventListener('change', () => { uiSet('fs.syncSubs', subs.checked ? '1' : '0'); update(); });
+  newer.addEventListener('change', () => { uiSet('fs.syncNewer', newer.checked ? '1' : '0'); update(); });
   update();
   const where = (side, path) => (side === 'local' ? path : `${tab.site.name || tab.site.host}: ${path}`);
   const ok = await modal({
     title: t('Csak az új fájlok másolása'),
     wide: true,
     body: h('div.sync-dlg',
-      h('div.sync-route', h('span.k', t('Innen (A)')), h('span.v', { title: srcDir }, where(fromSide, srcDir)),
-        h('span.k', t('Ide (B)')), h('span.v', { title: dstDir }, where(toSide, dstDir))),
+      h('div.sync-route', h('span.k', t('Innen')), h('span.v', { title: srcDir }, where(fromSide, srcDir)),
+        h('span.k', t('Ide')), h('span.v', { title: dstDir }, where(toSide, dstDir))),
       h('div.sync-opts',
         h('label.chk', subs, ' ', t('Az almappákkal együtt')),
         h('label.chk', newer, ' ', t('A célnál újabb fájlok is (felülírja a régebbit)'))),
-      sum, list),
+      sum, allRow, list),
     buttons: [{ label: t('Mégse'), value: null }, { label: fromSide === 'local' ? t('Feltöltés') : t('Letöltés'), value: true, primary: true }],
   });
   if (!ok || !plan.length) return;
