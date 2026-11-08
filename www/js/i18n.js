@@ -93,6 +93,7 @@ const EN = {
   'Nincs megadva a szerver címe.': 'No server address given.',
   'Nincs megadva a bucket neve.': 'No bucket name given.',
   'A vágólapon nincsenek fájlok.': 'There are no files on the clipboard.',
+  'Frissítések': 'Updates',
   'Hálózati időkorlát (másodperc)': 'Network timeout (seconds)',
   'Ennyi ideig vár a kapcsolódásra, illetve egy elakadt átvitelre (5–600). Lassú szervernél növeld.': 'How long to wait for a connection or a stalled transfer (5–600). Raise it for a slow server.',
   'Átviteli sor': 'Transfer queue',

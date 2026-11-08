@@ -1466,7 +1466,7 @@ async function settingsDlg() {
       fld('onedrive_client_id', t('OneDrive: Azure alkalmazás (client) azonosító'), h('input.inp', { value: s.onedrive_client_id || '', placeholder: '00000000-0000-0000-0000-000000000000', spellcheck: 'false' }),
         t('Egyszer kell beállítani: portal.azure.com → App registrations → New registration (személyes Microsoft-fiókok is), Authentication → „Allow public client flows” = Yes, API permissions: Files.ReadWrite.All, offline_access, User.Read. Az Application (client) ID-t másold ide.'), true),
       h('div.note.full', t('Amazon S3 és S3-kompatibilis szolgáltatók (R2, MinIO, Wasabi…): a kulcsokat oldalanként az Oldalkezelőben add meg.')))],
-    ['update', t('Frissítés'), h('div.settings-grid',
+    ['update', t('Frissítések'), h('div.settings-grid',
       h('label.chk.full', updCheck, t('Új verzió keresése induláskor')),
       h('label.field.full', h('span', t('Frissítési szerver')), h('div', { style: { display: 'flex', gap: '6px' } }, updServer,
         h('button.btn', { type: 'button', on: { click: () => saveUpdServer() } }, t('Keresés most'))),
@@ -1645,7 +1645,7 @@ async function installUpdate() {
   const u = S.update;
   if (updBusy || !u?.updateAvailable) return;
   const running = S.queue.filter((j) => j.status === 'running' || j.status === 'queued').length;
-  if (running && !(await confirmDlg(t('Frissítés'), t('{0} átvitel még fut vagy várakozik. Biztosan frissítesz most? Ezek megszakadnak.', running), t('Frissítés')))) return;
+  if (running && !(await confirmDlg(t('Telepítés most'), t('{0} átvitel még fut vagy várakozik. Biztosan frissítesz most? Ezek megszakadnak.', running), t('Telepítés most')))) return;
   const els = updateDlgEls();
   updBusy = true;
   els.install.style.display = 'none';
