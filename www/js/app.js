@@ -291,6 +291,7 @@ async function listPane(tab, side, { keepSel = true } = {}) {
   pane.loading = true;
   pane.error = null;
   if (tab === cur()) renderPaneHead(tab, side);
+  setBusy(true);
   try {
     let entries;
     if (side === 'local') {
@@ -310,6 +311,7 @@ async function listPane(tab, side, { keepSel = true } = {}) {
     if (side === 'remote' && String(e) === 'NOT_CONNECTED') { tab.session = null; tab.status = 'offline'; }
   } finally {
     pane.loading = false;
+    setBusy(false);
   }
   if (tab === cur()) { renderPane(tab, side); renderStatus(); renderToolbar(); }
 }
@@ -1161,6 +1163,7 @@ async function runJob(tab, job) {
   job.started = Date.now();
   job.last = { t: job.started, done: 0 };
   updateJobRow(job);
+  setBusy(true); // the bar under the toolbar runs while files are moving
   try {
     await invoke('transfer', { session: tab.session, id: job.id, direction: job.dir, local: job.local, remote: job.remote, size: job.size });
     job.status = 'done';
@@ -1168,7 +1171,7 @@ async function runJob(tab, job) {
   } catch (e) {
     job.status = String(e) === 'CANCELLED' ? 'cancelled' : 'error';
     job.error = friendly(e);
-  }
+  } finally { setBusy(false); }
   job.speed = job.status === 'done' ? (job.size / Math.max(0.001, (Date.now() - job.started) / 1000)) : 0;
   updateJobRow(job);
   renderQueueHead();
