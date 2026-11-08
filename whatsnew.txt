@@ -1,6 +1,29 @@
 FtpStar - What's new
 ====================
 
+0.4.0
+-----
+- New only (toolbar, or right-click > Upload / Download only the new
+  files): compares the two folders with their subfolders and copies the
+  files missing on the other side, optionally the newer ones too. A
+  dialog lists the files and asks first.
+- While the transfer panel is closed, the status bar shows the progress
+  of the whole batch: files, a bar, percent, speed and time left. Click
+  it to open the panel. The panel no longer opens by itself.
+- The progress bar under the toolbar now also runs while a folder is
+  listed and while files are transferred.
+- About: link to the website (www.c64va.pro/ftpstar.html).
+- The splash screen stays 3 seconds, as in GitStar.
+- Fix: a missing folder on the server (typed in the path box) showed an
+  empty list instead of an error (FTP: some servers answer LIST of a
+  missing folder with nothing; S3: empty prefixes).
+- A remote path typed without a leading / is relative to the folder
+  shown.
+- Fix: after a broken or stopped upload the partial file was removed
+  while the old connection could still hold it open, which leaves a
+  stuck .nfsXXXX file on NFS-based hosting. Deleting such a file now
+  explains what it is.
+
 0.3.0
 -----
 - Cut, copy and paste in both panes: Ctrl+X / Ctrl+C / Ctrl+V or the

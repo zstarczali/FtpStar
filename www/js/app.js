@@ -291,6 +291,7 @@ async function listPane(tab, side, { keepSel = true } = {}) {
   pane.loading = true;
   pane.error = null;
   if (tab === cur()) renderPaneHead(tab, side);
+  setBusy(true);
   try {
     let entries;
     if (side === 'local') {
@@ -310,6 +311,7 @@ async function listPane(tab, side, { keepSel = true } = {}) {
     if (side === 'remote' && String(e) === 'NOT_CONNECTED') { tab.session = null; tab.status = 'offline'; }
   } finally {
     pane.loading = false;
+    setBusy(false);
   }
   if (tab === cur()) { renderPane(tab, side); renderStatus(); renderToolbar(); }
 }
@@ -441,11 +443,12 @@ function renderToolbar() {
     tb('trash', t('Törlés'), () => deleteSel(tab, tab.focus), { disabled: !hasSel, title: t('Törlés (Del)') }),
     tb('refresh', t('Frissítés'), () => { listPane(tab, 'local'); listPane(tab, 'remote'); }, { disabled: !tab, title: t('Frissítés (Ctrl+R)') }),
     h('div.tb-sep'),
+    tb('sync', t('Csak újak'), () => syncNewDlg(tab, tab.focus), { disabled: !on, title: t('Csak az új fájlok átmásolása a kijelölt (aktív) oldalról a másikra, az almappákkal együtt; előtte megmutatja, mi kerül át') }),
     tb('compare', t('Összevetés'), () => { tab.compare = !tab.compare; renderAll(); }, { disabled: !on, cls: tab?.compare ? '.on' : '', title: t('A két oldal összevetése: hiányzó, eltérő és újabb fájlok kiemelése') }),
     tb('edit', t('Szerkesztés'), () => editRemote(tab), { disabled: !on || tab.focus !== 'remote' || fp.sel.size !== 1 || [...fp.entries].find((e) => fp.sel.has(e.name))?.dir, title: t('Távoli fájl megnyitása szerkesztésre; mentéskor automatikusan visszatöltődik') }),
     h('div.tb-spacer'),
     ...(S.donationVisible ? [h('span.tb-donate', tb('heart', t('Adomány'), () => openDonate(), { title: t('Az FtpStar ingyenes. Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést.') }))] : []),
-    tb('queue', t('Átvitelek'), () => { S.queueOpen = !S.queueOpen; uiSet('fs.queueOpen', S.queueOpen ? '1' : '0'); renderQueue(); }, { badge: active || null, cls: S.queueOpen ? '.on' : '' }),
+    tb('queue', t('Átvitelek'), () => { S.queueOpen = !S.queueOpen; uiSet('fs.queueOpen', S.queueOpen ? '1' : '0'); renderQueue(); renderXferStatus(); }, { badge: active || null, cls: S.queueOpen ? '.on' : '' }),
     tb(document.documentElement.dataset.theme === 'light' ? 'moon' : 'sun', t('Téma'), toggleTheme),
     tb('settings', t('Beállítások'), settingsDlg),
     tb('info', t('Névjegy'), aboutDlg),
@@ -595,7 +598,7 @@ function renderPaneHead(tab, side) {
   const remote = side === 'remote';
   const title = remote ? (tab.site.name || tab.site.host) : t('Helyi gép');
   const pathInp = h('input.inp.fp-path', { value: pane.path || (isWin() ? t('Meghajtók') : '/'), spellcheck: 'false',
-    on: { keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); navigate(tab, side, e.target.value.trim() || (remote ? '/' : '')); } if (e.key === 'Escape') e.target.value = pane.path; } } });
+    on: { keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); let v = e.target.value.trim() || (remote ? '/' : ''); if (remote && !v.startsWith('/')) v = remoteJoin(pane.path, v); navigate(tab, side, v); } if (e.key === 'Escape') e.target.value = pane.path; } } });
   const filter = h('input.inp.fp-filter', { value: pane.filter, placeholder: t('Szűrő (pl. *.jpg)'), spellcheck: 'false',
     on: { input: (e) => { pane.filter = e.target.value; renderRows(tab, side); } } });
   head.replaceChildren(
@@ -845,6 +848,8 @@ function paneMenu(e, tab, side) {
     sel.length ? { label: t('Tulajdonságok…'), icon: 'info', key: 'Alt+Enter', action: () => infoDlg(tab, side) } : null,
     sel.length ? { label: remote ? t('Letöltés ({0})', sel.length) : t('Feltöltés ({0})', sel.length), icon: remote ? 'download' : 'upload', disabled: !on, key: 'F5', action: () => transfer(tab, side) } : null,
     '-',
+    { label: remote ? t('Csak az új fájlok letöltése…') : t('Csak az új fájlok feltöltése…'), icon: 'sync', disabled: !on || (!remote && !pane.path), action: () => syncNewDlg(tab, side) },
+    '-',
     sel.length ? { label: t('Kivágás'), icon: 'cut', key: 'Ctrl+X', disabled: remote && !on, action: () => clipSel(tab, side, true) } : null,
     sel.length ? { label: t('Másolás'), icon: 'copy', key: 'Ctrl+C', disabled: remote && !on, action: () => clipSel(tab, side, false) } : null,
     { label: t('Beillesztés'), icon: 'paste', key: 'Ctrl+V', disabled: remote ? !on : !pane.path, action: () => pasteTo(tab, side) },
@@ -1020,7 +1025,12 @@ async function deleteSel(tab, side) {
     try {
       if (side === 'local') await invoke('local_remove', { path });
       else await invoke('remote_remove', { session: tab.session, path, dir: e.dir });
-    } catch (er) { errors++; toast(`${e.name}: ${friendly(er)}`, 'err'); }
+    } catch (er) {
+      errors++;
+      // NFS "silly rename": a file deleted while open somewhere; the server removes it itself once closed
+      toast(/^\.nfs[0-9a-f]+$/i.test(e.name) ? t('{0}: ez egy ideiglenes NFS-fájl. A szerver akkor hozza létre, ha egy fájlt nyitott állapotban töröltek vagy felülírtak, és csak akkor engedi törölni, amikor a fájlt használó folyamat (pl. a webszerver) bezárta. Általában magától eltűnik; ha napok múlva is megvan, a tárhelyszolgáltató tudja törölni.', e.name)
+        : `${e.name}: ${friendly(er)}`, 'err', /^\.nfs/i.test(e.name) ? 15000 : undefined);
+    }
   }
   setBusy(false);
   if (!errors) toast(t('{0} elem törölve', sel.length), 'ok');
@@ -1115,7 +1125,6 @@ async function transfer(tab, fromSide, { dstPath = null, items = null } = {}) {
   const skipped = jobs.filter((j) => skip.has(j));
   if (!add.length) { toast(t('Nincs mit átvinni (minden fájl kihagyva).')); listPane(tab, toSide); return { jobs: add, skipped }; }
   S.queue.push(...add);
-  if (!S.queueOpen && add.length > 1) { S.queueOpen = true; }
   renderQueue();
   renderToolbar();
   pump();
@@ -1158,6 +1167,7 @@ async function runJob(tab, job) {
   job.started = Date.now();
   job.last = { t: job.started, done: 0 };
   updateJobRow(job);
+  setBusy(true); // the bar under the toolbar runs while files are moving
   try {
     await invoke('transfer', { session: tab.session, id: job.id, direction: job.dir, local: job.local, remote: job.remote, size: job.size });
     job.status = 'done';
@@ -1165,7 +1175,7 @@ async function runJob(tab, job) {
   } catch (e) {
     job.status = String(e) === 'CANCELLED' ? 'cancelled' : 'error';
     job.error = friendly(e);
-  }
+  } finally { setBusy(false); }
   job.speed = job.status === 'done' ? (job.size / Math.max(0.001, (Date.now() - job.started) / 1000)) : 0;
   updateJobRow(job);
   renderQueueHead();
@@ -1281,6 +1291,87 @@ async function infoDlg(tab, side) {
     { label: t('Bezárás'), value: null, primary: true },
   ].filter(Boolean);
   await modal({ title: t('Tulajdonságok'), body: h('div', head, preview, info), buttons });
+}
+
+// ───────────────────────── copy only the new files ─────────────────────────
+
+/**
+ * A → B: the folder shown on side A is compared with the folder on the other side
+ * (with subfolders); files missing on B (and, if asked, newer on A) are queued
+ * after a confirmation that lists them.
+ */
+async function syncNewDlg(tab, fromSide) {
+  if (!tab?.session) { toast(t('Nincs kapcsolat.'), 'err'); return; }
+  const toSide = fromSide === 'local' ? 'remote' : 'local';
+  const srcDir = tab[fromSide].path, dstDir = tab[toSide].path;
+  if (!srcDir || !dstDir) { toast(t('Válassz egy helyi mappát.'), 'err'); return; }
+  const walk = (side, path) => invoke(side === 'local' ? 'local_walk' : 'remote_walk', side === 'local' ? { path } : { session: tab.session, path });
+  let src, dst;
+  setBusy(true);
+  try {
+    src = await walk(fromSide, srcDir);
+    dst = await walk(toSide, dstDir).catch(() => []);
+  } catch (e) { toast(friendly(e), 'err'); return; } finally { setBusy(false); }
+  if (!S.settings.show_hidden) src = src.filter((x) => !x.rel.split('/').some((p) => p.startsWith('.')));
+  const have = new Map(dst.map((x) => [x.rel.toLowerCase(), x]));
+
+  const subs = h('input', { type: 'checkbox', checked: true });
+  const newer = h('input', { type: 'checkbox' });
+  const sum = h('div.sync-sum');
+  const list = h('div.sync-list');
+  let plan = [];
+  const update = () => {
+    plan = [];
+    for (const f of src) {
+      if (f.dir || (!subs.checked && f.rel.includes('/'))) continue;
+      const d = have.get(f.rel.toLowerCase());
+      if (!d) plan.push({ f, kind: 'new' });
+      else if (newer.checked && !d.dir && (f.mtime || 0) > (d.mtime || 0) + 1) plan.push({ f, kind: 'upd' });
+    }
+    const bytes = plan.reduce((a, p) => a + (p.f.size || 0), 0);
+    const nNew = plan.filter((p) => p.kind === 'new').length;
+    sum.textContent = plan.length
+      ? t('{0} fájl ({1}) kerül át: {2} új, {3} újabb.', plan.length, fmtSize(bytes), nNew, plan.length - nNew)
+      : t('Nincs új fájl: a cél naprakész.');
+    list.replaceChildren(...plan.slice(0, 300).map((p) => h('div.' + p.kind, (p.kind === 'new' ? '+ ' : '↑ ') + p.f.rel)),
+      ...(plan.length > 300 ? [h('div', `… (+${plan.length - 300})`)] : []));
+    list.style.display = plan.length ? '' : 'none';
+  };
+  subs.addEventListener('change', update);
+  newer.addEventListener('change', update);
+  update();
+  const where = (side, path) => (side === 'local' ? path : `${tab.site.name || tab.site.host}: ${path}`);
+  const ok = await modal({
+    title: t('Csak az új fájlok másolása'),
+    wide: true,
+    body: h('div.sync-dlg',
+      h('div.sync-route', h('span.k', t('Innen (A)')), h('span.v', { title: srcDir }, where(fromSide, srcDir)),
+        h('span.k', t('Ide (B)')), h('span.v', { title: dstDir }, where(toSide, dstDir))),
+      h('div.sync-opts',
+        h('label.chk', subs, ' ', t('Az almappákkal együtt')),
+        h('label.chk', newer, ' ', t('A célnál újabb fájlok is (felülírja a régebbit)'))),
+      sum, list),
+    buttons: [{ label: t('Mégse'), value: null }, { label: fromSide === 'local' ? t('Feltöltés') : t('Letöltés'), value: true, primary: true }],
+  });
+  if (!ok || !plan.length) return;
+  // folders first, then the files into the queue
+  const up = fromSide === 'local';
+  const dirs = new Set();
+  for (const p of plan) { const parts = p.f.rel.split('/'); for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/')); }
+  setBusy(true);
+  try {
+    for (const d of [...dirs].sort()) {
+      if (have.has(d.toLowerCase())) continue;
+      const path = sideJoinRel(toSide, dstDir, d);
+      await (up ? invoke('remote_mkdir', { session: tab.session, path }) : invoke('local_mkdir', { path })).catch(() => {});
+    }
+  } finally { setBusy(false); }
+  const jobs = plan.map((p) => mkJob(tab, up, sideJoinRel(fromSide, srcDir, p.f.rel), sideJoinRel(toSide, dstDir, p.f.rel), p.f.rel, p.f.size));
+  S.queue.push(...jobs);
+  renderQueue();
+  renderToolbar();
+  pump();
+  toast(t('{0} fájl a sorban.', jobs.length), 'ok');
 }
 
 // ───────────────────────── cut / copy / paste ─────────────────────────
@@ -1500,7 +1591,32 @@ function renderQueue() {
 let headTimer = null;
 function renderQueueHeadSoon() { if (!headTimer) headTimer = setTimeout(() => { headTimer = null; renderQueueHead(); }, 300); }
 
+/** While the queue panel is hidden, the status bar shows how the transfers are going. */
+function renderXferStatus() {
+  const el = document.getElementById('xfer-status');
+  if (!el) return;
+  // the current batch: everything since the queue was last empty
+  const batch = S.queue.filter((j) => !j.finishedShown && j.status !== 'cancelled' && j.status !== 'skipped');
+  const active = batch.filter((j) => j.status === 'running' || j.status === 'queued');
+  if (S.queueOpen || !active.length) { el.replaceChildren(); el.title = ''; return; }
+  const total = batch.reduce((a, j) => a + (j.size || 0), 0);
+  const done = batch.reduce((a, j) => a + (j.status === 'done' ? j.size || 0 : Math.min(j.done || 0, j.size || 0)), 0);
+  const files = batch.filter((j) => j.status === 'done').length;
+  const errs = batch.filter((j) => j.status === 'error').length;
+  const speed = batch.filter((j) => j.status === 'running').reduce((a, j) => a + (j.speed || 0), 0);
+  const pct = total ? Math.min(100, Math.floor((done * 100) / total)) : Math.floor((files * 100) / batch.length);
+  const up = active.some((j) => j.dir === 'up'), down = active.some((j) => j.dir === 'down');
+  el.replaceChildren(icon(up && !down ? 'upload' : down && !up ? 'download' : 'queue'),
+    h('span', t('{0} / {1} fájl', files, batch.length)),
+    h('span.xb', h('i', { style: { width: pct + '%' } })),
+    h('span', pct + '%'),
+    speed ? h('span', fmtSpeed(speed) + (total > done ? ' · ' + t('hátra: {0}', fmtEta((total - done) / speed)) : '')) : null,
+    errs ? h('span.xe', t('{0} hiba', errs)) : null);
+  el.title = t('Átvitelek – kattints a lista megnyitásához');
+}
+
 function renderQueueHead() {
+  renderXferStatus();
   const head = document.querySelector('#queue .q-head');
   if (!head) return;
   const by = (s) => S.queue.filter((j) => j.status === s);
@@ -1516,7 +1632,7 @@ function renderQueueHead() {
     errs.length ? h('button.btn.sm', { on: { click: () => { errs.forEach((j) => { j.status = 'queued'; j.error = null; j.done = 0; }); renderQueue(); pump(); } } }, icon('refresh'), t('Hibásak újra')) : null,
     running.length || queued.length ? h('button.btn.sm', { on: { click: () => [...queued, ...running].forEach(cancelJob) } }, icon('stop'), t('Összes leállítása')) : null,
     h('button.btn.sm', { disabled: !S.queue.some((j) => ['done', 'cancelled', 'skipped'].includes(j.status)) || null, on: { click: () => { S.queue = S.queue.filter((j) => !['done', 'cancelled', 'skipped'].includes(j.status)); renderQueue(); } } }, t('Befejezettek törlése')),
-    h('button.icon-btn', { title: t('Elrejtés'), on: { click: () => { S.queueOpen = false; uiSet('fs.queueOpen', '0'); renderQueue(); renderToolbar(); } } }, icon('down')));
+    h('button.icon-btn', { title: t('Elrejtés'), on: { click: () => { S.queueOpen = false; uiSet('fs.queueOpen', '0'); renderQueue(); renderToolbar(); renderXferStatus(); } } }, icon('down')));
 }
 
 function jobRow(j) {
@@ -1612,10 +1728,12 @@ function renderStatus() {
     tab ? h('span', statusDot(tab), ' ', tab.status === 'connected' ? t('Kapcsolódva: {0}', siteSubtitle(tab.site)) : tab.status === 'connecting' ? t('Kapcsolódás…') : t('Nincs kapcsolat')) : h('span', t('Nincs megnyitott kapcsolat')),
     tab ? h('span', PROTOS[tab.site.protocol]?.label || '') : null,
     h('span.grow'),
+    h('span#xfer-status.xfer-status', { on: { click: () => { S.queueOpen = true; uiSet('fs.queueOpen', '1'); renderQueue(); renderToolbar(); renderXferStatus(); } } }),
     watches.length ? h('a', { title: t('Kattints a figyelés leállításához'), on: { click: (e) => contextMenu(e, watches.map((w) => ({ label: t('Figyelés leállítása: {0}', w.name), icon: 'close', action: () => { S.watches = S.watches.filter((x) => x !== w); renderStatus(); } }))) } }, icon('edit'), ' ', t('{0} fájl szerkesztés alatt', watches.length)) : null,
     S.update?.updateAvailable ? h('span.update-status', { title: t('Kattints a telepítéshez'), on: { click: () => updateShowAvailable() } }, icon('download'), t('Frissítés elérhető: v{0}', S.update.latestVersion)) : null,
     h('span.zoom-status', { title: t('Nagyítás (Ctrl + / Ctrl − / Ctrl 0)'), on: { click: () => stepZoom(0) } }, Math.round((S.settings.zoom || 1) * 100) + '%'),
     h('span', 'v' + S.info.version));
+  renderXferStatus();
 }
 
 // ───────────────────────── site manager ─────────────────────────
@@ -1901,7 +2019,8 @@ async function aboutDlg() {
       [t('Verzió'), S.info.version || '?'],
       [t('Rendszer'), S.info.os || '?'],
       [t('Beállítások mappája'), S.info.config_dir || '?'],
-    ].map(([k, v]) => [h('span.k', k), h('span.v', { title: v }, v)])),
+    ].map(([k, v]) => [h('span.k', k), h('span.v', { title: v }, v)]),
+      h('span.k', t('Weboldal')), h('span.v', h('a.about-link', { title: SITE_URL, on: { click: () => invoke('open_url', { url: SITE_URL }).catch((e) => toast(String(e), 'err')) } }, SITE_URL.replace(/^https:\/\//, '')))),
     h('div.about-foot', t('Rust + Tauri 2. A GitStar testvérprogramja.')),
     h('div.about-free', t('Az FtpStar ingyenes (freeware). Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!')),
     h('div.about-copy', '© 2026 Zsolt Tarczali')),
@@ -1916,6 +2035,7 @@ async function aboutDlg() {
 
 // ── donation (same as GitStar: the button appears after 10 minutes of use) ──
 const DONATE_URL = 'https://www.c64va.pro/register/donate.php';
+const SITE_URL = 'https://www.c64va.pro/ftpstar.html';
 function startDonationTimer() {
   let remaining = 10 * 60 * 1000;
   let started = null;

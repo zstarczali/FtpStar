@@ -46,6 +46,7 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            commands::mark_start();
             let dir = app.path().app_config_dir().unwrap_or_else(|_| std::env::temp_dir().join("FtpStar"));
             app.manage(AppState::new(settings::Store::load(dir)));
             // the windows are created only now, so their first calls find the state

@@ -16,6 +16,11 @@ async fn exercise(conn: Conn, home: &str) {
     let list = conn.list(home).await.expect("list");
     assert!(list.iter().any(|e| e.name == "readme.txt" && !e.dir), "readme.txt in {home}: {list:?}");
     assert!(list.iter().any(|e| e.name == "pub" && e.dir), "pub folder");
+    // a missing folder is an error, not an empty listing
+    let missing = conn.list(&ftpstar_lib::xfer::join(home, "pub/no-such-folder")).await;
+    assert!(missing.is_err(), "missing folder listed as {missing:?}");
+    // and the session still works after it
+    assert!(!conn.list(&ftpstar_lib::xfer::join(home, "pub")).await.expect("list pub").is_empty());
     let tmp = std::env::temp_dir().join(format!("ftpstar-test-{}.txt", std::process::id()));
     let local = tmp.display().to_string();
     let p = Progress::new(None, "t".into(), 0, Arc::new(AtomicBool::new(false)));

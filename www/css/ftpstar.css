@@ -189,3 +189,25 @@ body.dragging, body.dragging * { cursor: copy !important; }
 .info-img { display: block; max-width: 100%; max-height: 260px; margin: 0 auto 14px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0, 0, 0, .25); }
 .file-info { min-width: 420px; max-width: 560px; }
 .file-info .v.mono { font-family: var(--mono, monospace); }
+
+/* About: website link */
+.about-info a.about-link { color: var(--accent); cursor: pointer; text-decoration: none; }
+.about-info a.about-link:hover { text-decoration: underline; }
+
+/* transfers in the status bar while the queue is hidden */
+.xfer-status { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text); }
+.xfer-status:empty { display: none; }
+.xfer-status .xb { width: 120px; height: 6px; border-radius: 3px; background: var(--bg-3, rgba(127,127,127,.2)); box-shadow: inset 0 0 0 1px var(--border); overflow: hidden; }
+.xfer-status .xb i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.xfer-status .xe { color: var(--danger); }
+
+/* copy only the new files */
+.sync-dlg { min-width: 0; }
+.sync-route { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; margin-bottom: 12px; }
+.sync-route .k { color: var(--text-dim); }
+.sync-route .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono, monospace); }
+.sync-opts { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 12px; }
+.sync-sum { font-weight: 600; margin-bottom: 6px; }
+.sync-list { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-family: var(--mono, monospace); white-space: pre; }
+.sync-list .new { color: var(--ok, #3fbf74); }
+.sync-list .upd { color: var(--warn, #e3a33a); }

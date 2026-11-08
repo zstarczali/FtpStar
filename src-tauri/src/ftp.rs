@@ -173,6 +173,16 @@ impl Ftp {
                 Err(_) => vec![],
             };
             if out.is_empty() {
+                // MLSD failed, or the folder looks empty: does it exist at all? Many
+                // servers answer LIST of a missing folder with an empty listing.
+                let back = s.pwd().ok();
+                let found = s.cwd(&path);
+                if let Some(b) = back {
+                    let _ = s.cwd(&b);
+                }
+                if let Err(e) = found {
+                    return Err(format!("{}: {path} ({})", crate::settings::tr("A mappa nem létezik", "The folder does not exist"), e.to_string().trim()));
+                }
                 let lines = s.list(Some(&path)).map_err(|e| e.to_string())?;
                 let lines: Vec<&String> = lines.iter().filter(|l| !l.trim().is_empty() && !l.starts_with("total ")).collect();
                 out = lines.iter().filter_map(|l| FtpFile::try_from(l.as_str()).ok()).map(|f| to_entry(&f)).collect();
@@ -280,6 +290,12 @@ impl Ftp {
                 }
                 Err(e) => {
                     drop(data);
+                    // Close this session before the partial file is removed: a server
+                    // process still holding the file open turns the delete into a
+                    // stuck ".nfsXXXX" file on NFS-backed hosting.
+                    let _ = s.quit();
+                    drop(s);
+                    std::thread::sleep(std::time::Duration::from_millis(800));
                     // remove the partial file on a fresh connection; ignore errors
                     if let Ok(mut c) = connect(&me.site, &me.password) {
                         let _ = c.rm(&remote);
