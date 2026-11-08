@@ -51,6 +51,10 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 
 // ── icons (stroke icons, 24x24 grid) ──
 const P = {
+  viewList: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h1M4 12h1M4 18h1"/>',
+  viewSmall: '<rect x="3" y="4" width="4" height="4" rx="1"/><path d="M10 6h11"/><rect x="3" y="10" width="4" height="4" rx="1"/><path d="M10 12h11"/><rect x="3" y="16" width="4" height="4" rx="1"/><path d="M10 18h11"/>',
+  viewLarge: '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5.5-5.5L6 20"/>',
   fetch: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
   pull: '<path d="M12 3v13"/><path d="m6 10 6 6 6-6"/><circle cx="12" cy="20" r="1.5"/>',
   push: '<path d="M12 21V8"/><path d="m6 14 6-6 6 6"/><path d="M5 4h14"/>',

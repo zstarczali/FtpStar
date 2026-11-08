@@ -370,6 +370,33 @@ pub async fn transfer(
     r.map(|_| p.done())
 }
 
+/// Thumbnail of a local image (data URL).
+#[tauri::command]
+pub async fn local_thumb(path: String, size: u32) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || crate::thumb::make(std::path::Path::new(&path), size)).await.map_err(|e| e.to_string())?
+}
+
+/// Thumbnail of a remote image: downloaded once to a cache folder (named after
+/// the site, path, size and date), then made like a local one.
+#[tauri::command]
+pub async fn remote_thumb(state: State<'_, AppState>, session: String, server: String, path: String, file_size: u64, mtime: i64, size: u32) -> Result<String, String> {
+    if file_size > crate::thumb::MAX_REMOTE {
+        return Err("too large".into());
+    }
+    let cached = crate::thumb::cache_file(&server, &path, file_size, mtime);
+    if !cached.exists() {
+        let conn = state.conn(&session)?;
+        if let Some(dir) = cached.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+        }
+        let part = cached.with_extension("part");
+        let p = Progress::new(None, String::new(), file_size, Arc::new(AtomicBool::new(false)));
+        conn.download(&path, &part.display().to_string(), p).await?;
+        std::fs::rename(&part, &cached).map_err(|e| e.to_string())?;
+    }
+    tokio::task::spawn_blocking(move || crate::thumb::make(&cached, size)).await.map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 pub fn cancel_transfer(state: State<'_, AppState>, id: String) {
     if let Some(c) = state.cancels.lock().unwrap().get(&id) {

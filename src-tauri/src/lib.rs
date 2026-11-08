@@ -5,6 +5,7 @@ pub mod onedrive;
 pub mod s3;
 pub mod settings;
 pub mod sftp;
+pub mod thumb;
 mod update;
 pub mod xfer;
 
@@ -98,6 +99,8 @@ pub fn run() {
             commands::onedrive_device_poll,
             commands::clipboard_files,
             commands::clipboard_text,
+            commands::local_thumb,
+            commands::remote_thumb,
             commands::set_ui_language,
             update::check_for_update,
             update::download_and_install_update,

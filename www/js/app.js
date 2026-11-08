@@ -147,7 +147,7 @@ function rememberTabs() {
 // ───────────────────────── tabs & connections ─────────────────────────
 
 function newPane(side, path) {
-  return { side, path, entries: [], sel: new Set(), anchor: null, cursor: null, sort: { key: 'name', asc: true }, filter: '', back: [], loading: false, error: null };
+  return { side, path, view: uiGet('fs.view.' + side) || 'details', entries: [], sel: new Set(), anchor: null, cursor: null, sort: { key: 'name', asc: true }, filter: '', back: [], loading: false, error: null };
 }
 
 function openTab(site, { connect = true } = {}) {
@@ -517,6 +517,75 @@ function setFocus(tab, side) {
   renderToolbar();
 }
 
+const VIEWS = [
+  ['details', 'viewList', () => t('Részletek')],
+  ['small', 'viewSmall', () => t('Kis ikonok')],
+  ['large', 'viewLarge', () => t('Nagy ikonok (képek előnézetével)')],
+];
+const IMG_EXT = /\.(jpe?g|png|gif|webp|bmp|ico|svg)$/i;
+
+/** Details, small icons or large icons; remembered for the side. */
+function setView(tab, side, view) {
+  const pane = tab[side];
+  if (pane.view === view) return;
+  pane.view = view;
+  uiSet('fs.view.' + side, view);
+  renderPane(tab, side);
+  setFocus(tab, side);
+}
+
+// ── thumbnails: made in Rust, cached here, loaded as the tiles scroll into view ──
+const thumbCache = new Map();
+const thumbQueue = { local: [], remote: [] };
+const thumbBusy = { local: 0, remote: 0 };
+const THUMB_PARALLEL = { local: 4, remote: 2 };
+
+function thumbKey(tab, side, e, px) {
+  return `${side === 'remote' ? tab.site.id : ''}|${sideJoin(side, tab[side].path, e.name)}|${e.size}|${e.mtime}|${px}`;
+}
+
+function wantThumb(tab, side, e, px, img) {
+  const key = thumbKey(tab, side, e, px);
+  if (thumbCache.has(key)) { const v = thumbCache.get(key); if (v) showThumb(img, v); return; }
+  const kind = side === 'remote' ? 'remote' : 'local';
+  thumbQueue[kind].push({ tab, side, e, px, img, key, path: sideJoin(side, tab[side].path, e.name) });
+  pumpThumbs(kind);
+}
+
+function showThumb(img, url) {
+  img.src = url;
+  img.closest('.ti')?.classList.add('has-thumb');
+}
+
+async function pumpThumbs(kind) {
+  while (thumbBusy[kind] < THUMB_PARALLEL[kind] && thumbQueue[kind].length) {
+    const job = thumbQueue[kind].pop(); // the newest first: what is on screen now
+    if (!job.img.isConnected) continue;
+    if (thumbCache.has(job.key)) { const v = thumbCache.get(job.key); if (v) showThumb(job.img, v); continue; }
+    thumbBusy[kind]++;
+    (async () => {
+      let url = null;
+      try {
+        url = kind === 'local'
+          ? await invoke('local_thumb', { path: job.path, size: job.px })
+          : job.tab.session ? await invoke('remote_thumb', { session: job.tab.session, server: job.tab.site.id, path: job.path, fileSize: job.e.size || 0, mtime: job.e.mtime || 0, size: job.px }) : null;
+      } catch { url = null; }
+      if (job.tab.session || kind === 'local') thumbCache.set(job.key, url);
+      if (url && job.img.isConnected) showThumb(job.img, url);
+      thumbBusy[kind]--;
+      pumpThumbs(kind);
+    })();
+  }
+}
+
+const thumbObserver = new IntersectionObserver((list) => {
+  for (const it of list) {
+    if (!it.isIntersecting) continue;
+    thumbObserver.unobserve(it.target);
+    it.target._want?.();
+  }
+}, { rootMargin: '200px' });
+
 function renderPaneHead(tab, side) {
   const pane = tab[side];
   if (!pane.el) return;
@@ -531,6 +600,8 @@ function renderPaneHead(tab, side) {
     h('div.fp-title', icon(remote ? (PROTOS[tab.site.protocol]?.icon || 'server') : 'drive'), h('span.t', title),
       remote ? statusDot(tab) : null, pane.loading ? icon('refresh', 'spin') : null, h('span.grow'),
       remote && !tab.session && tab.status !== 'connecting' ? h('button.btn.sm.primary', { on: { click: () => connectTab(tab) } }, icon('plug'), t('Kapcsolódás')) : null,
+      h('div.fp-views', VIEWS.map(([v, ic, label]) => h('button.icon-btn' + (pane.view === v ? '.on' : ''),
+        { title: label(), on: { click: () => setView(tab, side, v) } }, icon(ic)))),
       filter),
     h('div.fp-nav',
       h('button.icon-btn', { title: t('Vissza (Alt+←)'), disabled: !pane.back.length || null, on: { click: () => goBack(tab, side) } }, icon('undo')),
@@ -556,6 +627,8 @@ function renderRows(tab, side) {
   const pane = tab[side];
   const body = pane.el?.querySelector('.fp-body');
   if (!body) return;
+  body.className = 'fp-body';
+  pane.el.classList.remove('tiles');
   if (side === 'remote' && !tab.session) {
     body.replaceChildren(h('div.empty', icon(tab.status === 'connecting' ? 'refresh' : 'unplug', tab.status === 'connecting' ? 'spin' : ''),
       tab.status === 'connecting' ? t('Kapcsolódás…') : (tab.error || t('Nincs kapcsolat')),
@@ -571,12 +644,30 @@ function renderRows(tab, side) {
   const list = visibleEntries(pane);
   const frag = document.createDocumentFragment();
   const parent = sideParent(side, pane.path);
+  const tiles = pane.view !== 'details';
+  body.className = 'fp-body view-' + pane.view;
+  pane.el.classList.toggle('tiles', tiles);
+  const px = pane.view === 'large' ? 160 : 64;
   if (parent != null && !pane.filter) {
-    frag.append(h('div.frow.up', { dataset: { name: '..' } }, h('div.fc.c-name', icon('arrowUp'), h('span.n', '..')), h('div.fc.c-size'), h('div.fc.c-mtime'), h('div.fc.c-perms')));
+    frag.append(tiles
+      ? h('div.frow.tile.up', { dataset: { name: '..' }, title: t('Fel (Backspace)') }, h('div.ti', icon('arrowUp')), h('div.tn', '..'))
+      : h('div.frow.up', { dataset: { name: '..' } }, h('div.fc.c-name', icon('arrowUp'), h('span.n', '..')), h('div.fc.c-size'), h('div.fc.c-mtime'), h('div.fc.c-perms')));
   }
   for (const e of list) {
     const mark = compareMark(tab, side, e);
     const cls = (pane.sel.has(e.name) ? '.sel' : '') + (pane.cursor === e.name ? '.cur' : '') + (e.dir ? '.dir' : '') + (mark ? '.cmp-' + mark : '');
+    if (tiles) {
+      const isImg = !e.dir && IMG_EXT.test(e.name);
+      const img = isImg ? h('img', { alt: '', draggable: 'false' }) : null;
+      const tile = h('div.frow.tile' + cls, { dataset: { name: e.name },
+        title: `${e.name}${e.dir ? '' : '\n' + fmtSize(e.size)}${e.mtime ? '\n' + fmtDate(e.mtime, true) : ''}` },
+        h('div.ti', icon(e.drive ? 'drive' : e.dir ? 'folder' : isImg ? 'image' : fileIcon(e.name)), img),
+        h('div.tn', e.name, e.link ? h('span.lnk', ' ↪') : null),
+        pane.view === 'large' ? h('div.tm', e.dir ? '' : fmtSize(e.size)) : null);
+      if (img) { tile._want = () => wantThumb(tab, side, e, px, img); thumbObserver.observe(tile); }
+      frag.append(tile);
+      continue;
+    }
     frag.append(h('div.frow' + cls, { dataset: { name: e.name } },
       h('div.fc.c-name', icon(e.drive ? 'drive' : e.dir ? 'folder' : fileIcon(e.name)), h('span.n', e.name), e.link ? h('span.lnk', '↪') : null),
       h('div.fc.c-size', e.dir ? '' : fmtSize(e.size)),
@@ -761,6 +852,8 @@ function paneMenu(e, tab, side) {
     remote && one && tab.site.protocol !== 'onedrive' && tab.site.protocol !== 's3' ? { label: t('URL másolása'), icon: 'link', action: () => navigator.clipboard.writeText(siteUrl(tab.site, full)) } : null,
     !remote && pane.path ? { label: t('Megjelenítés a Fájlkezelőben'), icon: 'folder', action: () => invoke('reveal_path', { path: full }).catch((er) => toast(er, 'err')) } : null,
     { label: t('Frissítés'), icon: 'refresh', key: 'Ctrl+R', action: () => listPane(tab, side) },
+    '-',
+    ...VIEWS.map(([v, ic, label]) => ({ label: label() + (pane.view === v ? '  ✓' : ''), icon: ic, action: () => setView(tab, side, v) })),
   ]);
 }
 
@@ -773,6 +866,28 @@ function selectDifferent(tab, side) {
   const pane = tab[side];
   pane.sel = new Set(pane.entries.filter((e) => ['only', 'newer', 'diff'].includes(compareMark(tab, side, e))).map((e) => e.name));
   renderRows(tab, side); renderToolbar();
+}
+
+/** Tiles per row in the icon views (1 in the details view). */
+function gridColumns(tab, side) {
+  const pane = tab[side];
+  if (pane.view === 'details') return 1;
+  const tiles = pane.el?.querySelectorAll('.fp-body .frow.tile:not(.up)') || [];
+  if (tiles.length < 2) return 1;
+  const top = tiles[0].offsetTop;
+  let n = 0;
+  for (const el of tiles) { if (el.offsetTop !== top) break; n++; }
+  return Math.max(1, n);
+}
+
+function moveCursor(tab, side, e, delta) {
+  const pane = tab[side];
+  const order = rowsOrder(tab, side);
+  let i = order.indexOf(pane.cursor);
+  i = i < 0 ? 0 : Math.max(0, Math.min(order.length - 1, i + delta));
+  const name = order[i];
+  if (e.shiftKey) { pane.sel.add(name); pane.cursor = name; paintSelection(tab, side); renderToolbar(); }
+  else selectRow(tab, side, name);
 }
 
 // keyboard: Total Commander style
@@ -799,7 +914,12 @@ document.addEventListener('keydown', (e) => {
   switch (e.key) {
     case 'Tab': e.preventDefault(); setFocus(tab, side === 'local' ? 'remote' : 'local'); return;
     case 'Backspace': e.preventDefault(); goUp(tab, side); return;
-    case 'ArrowLeft': if (e.altKey) { e.preventDefault(); goBack(tab, side); } return;
+    case 'ArrowLeft': case 'ArrowRight':
+      if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(tab, side); return; }
+      if (pane.view === 'details' || e.altKey || !order.length) return;
+      e.preventDefault();
+      moveCursor(tab, side, e, e.key === 'ArrowRight' ? 1 : -1);
+      return;
     case 'Enter': e.preventDefault(); if (pane.cursor) openEntry(tab, side, pane.cursor); else if (hasUp) goUp(tab, side); return;
     case 'Delete': e.preventDefault(); deleteSel(tab, side); return;
     case 'F2': e.preventDefault(); renameDlg(tab, side); return;
@@ -818,7 +938,8 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
       if (!order.length) return;
       let i = order.indexOf(pane.cursor);
-      const step = e.key.startsWith('Page') ? 15 : 1;
+      const cols = gridColumns(tab, side);
+      const step = e.key.startsWith('Page') ? (cols > 1 ? cols * 4 : 15) : cols;
       if (e.key === 'ArrowDown' || e.key === 'PageDown') i = i < 0 ? 0 : Math.min(order.length - 1, i + step);
       else if (e.key === 'ArrowUp' || e.key === 'PageUp') i = Math.max(0, i - step);
       else if (e.key === 'Home') i = 0; else i = order.length - 1;
