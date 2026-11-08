@@ -1,0 +1,21 @@
+FtpStar - What's new
+====================
+
+0.1.0
+-----
+- First release: FTP, FTPS (explicit and implicit), SFTP, Amazon S3 and
+  S3-compatible storage, Microsoft OneDrive.
+- Two panes (local / remote), a tab for every connection, Site Manager
+  with folders and colours, Quick connect.
+- Transfer queue with parallel transfers, progress, speed, time left,
+  stop and retry; folders are transferred with their contents; ask /
+  overwrite / skip / only newer when the target exists.
+- Drag and drop between the panes and from Explorer / Finder; Ctrl+V
+  uploads files copied in Explorer / Finder.
+- Double-click opens a file; a remote file is uploaded again when saved.
+- Folder compare highlights missing, different and newer files.
+- FTPS data connections resume the control connection's TLS session
+  (required by FileZilla Server, vsftpd and others).
+- Self-update from https://www.c64va.pro/downloads/FtpStar/, Donate
+  button, closing a tab asks first.
+- GitStar themes, Hungarian and English UI.
