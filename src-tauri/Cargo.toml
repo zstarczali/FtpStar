@@ -1,6 +1,6 @@
 [package]
 name = "ftpstar"
-version = "0.1.0"
+version = "0.2.0"
 description = "FtpStar - FTP, SFTP, S3 and OneDrive client"
 edition = "2021"
 
@@ -31,6 +31,7 @@ sha2 = "0.10"
 base64 = "0.22"
 urlencoding = "2"
 arboard = "3"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp", "ico"] }
 
 [profile.release]
 codegen-units = 1

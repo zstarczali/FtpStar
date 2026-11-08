@@ -1,11 +1,19 @@
 FtpStar Installation Guide
 ==========================
 
-Version 0.1.0
+Version 0.2.0
 -------------
-First release: a two-pane FTP, FTPS, SFTP, Amazon S3 (and S3-compatible)
-and Microsoft OneDrive client with a transfer queue, folder compare and
-remote editing. A sibling of GitStar.
+A two-pane FTP, FTPS, SFTP, Amazon S3 (and S3-compatible) and Microsoft
+OneDrive client with a transfer queue, folder compare and remote
+editing. A sibling of GitStar.
+
+New in 0.2.0: every pane can show details, small icons or large icons
+(the buttons next to the filter, or right-click); in the icon views
+images are shown as thumbnails, also on the server.
+
+Since 0.1.1: Settings > General > Network timeout (5-600 seconds) for
+connecting and for a stalled transfer; raise it for a slow server.
+Large S3 transfers are no longer cut off after 60 seconds.
 
 The main-window Donate button appears after 10 minutes of foreground
 use. The timer pauses while the window is unfocused or hidden and
