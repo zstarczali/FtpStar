@@ -62,3 +62,16 @@ async fn sftp_rebex() {
     assert_eq!(o.new_fingerprint.as_deref(), Some(fp.as_str()));
     exercise(Conn::Sftp(o.conn), &o.home).await;
 }
+
+#[test]
+fn mlsd_lines() {
+    use ftpstar_lib::ftp::parse_mlsd;
+    let e = parse_mlsd("type=file;size=1234;modify=20240102030405;UNIX.mode=0644; my file.txt").unwrap();
+    assert_eq!((e.name.as_str(), e.dir, e.size), ("my file.txt", false, 1234));
+    assert_eq!(e.perms.as_deref(), Some("rw-r--r--"));
+    assert_eq!(e.mtime, Some(1704164645));
+    let d = parse_mlsd("Type=dir;Modify=20240102030405.123;Perm=flcdmpe; public_html").unwrap();
+    assert!(d.dir && d.name == "public_html");
+    assert!(parse_mlsd("type=cdir;modify=20240102030405; .").is_none());
+    assert!(parse_mlsd("type=pdir; ..").is_none());
+}
