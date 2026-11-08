@@ -1,0 +1,62 @@
+FtpStar Freeware License
+========================
+
+Copyright (c) 2026 Zsolt Tarczali. All rights reserved.
+
+FtpStar ("the Software") is freeware. It is owned by Zsolt Tarczali and is
+licensed, not sold.
+
+1. Permitted use
+   You may download, install and use the Software free of charge, for any
+   personal, educational or commercial purpose, on any number of computers.
+
+2. Restrictions
+   Without the prior written permission of the copyright holder you may not:
+   a) copy, redistribute, publish, share, upload or otherwise make the
+      Software, its installers or its source code available to others
+      (including mirrors, download sites, app stores and bundles);
+   b) sell, rent, lease or sublicense the Software, or charge any fee for it;
+   c) modify, translate, adapt or create derivative works of the Software;
+   d) reverse engineer, decompile or disassemble the Software, except where
+      applicable law expressly permits it;
+   e) remove or alter any copyright notice, trademark or this license.
+
+   The only authorized source of the Software is its official download
+   location. Point others there instead of passing on copies.
+
+3. Third-party components
+   The Software includes open source components (such as Tauri, Rust crates
+   and WebView2 runtime bindings) that remain under their own licenses. It
+   runs the Git executable installed on your computer, which is licensed
+   separately. Nothing in this license limits your rights under those
+   licenses.
+
+4. AI services
+   Optional AI features send diffs and commit data to the AI provider you
+   configure (Anthropic or DeepSeek) using your own API key. Your use of
+   those services is governed by the provider's terms.
+
+5. No warranty
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+
+6. Limitation of liability
+   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES
+   OR OTHER LIABILITY, INCLUDING LOSS OF DATA OR REPOSITORY CONTENTS,
+   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+   Always keep backups of important repositories.
+
+7. Termination
+   This license ends automatically if you break its terms. You must then
+   stop using the Software and delete all copies.
+
+Questions and permission requests: Zsolt Tarczali, the copyright holder.
+
+
+---------------------------------------------------------------------------
+Röviden magyarul (tájékoztató, a fenti angol szöveg az irányadó):
+A FtpStar ingyenes program. Szabadon letöltheted, telepítheted és
+használhatod bármilyen célra, akár munkában is. A szerző írásos engedélye
+nélkül nem szabad másolni, továbbadni, közzétenni, feltölteni, árulni vagy
+módosítani. A program garancia nélkül, "ahogy van" alapon érhető el.

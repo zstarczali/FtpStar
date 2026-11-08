@@ -1,0 +1,41 @@
+[package]
+name = "ftpstar"
+version = "0.1.0"
+description = "FtpStar - FTP, SFTP, S3 and OneDrive client"
+edition = "2021"
+
+[lib]
+name = "ftpstar_lib"
+crate-type = ["cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "fs", "io-util", "time", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["native-tls", "json", "stream"] }
+suppaftp = { version = "6", features = ["rustls", "deprecated"] }
+webpki-roots = "1"
+rustls-native-certs = "0.8"
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+russh = { version = "0.54", default-features = false, features = ["flate2", "ring", "rsa"] }
+russh-sftp = "2"
+rust-s3 = { version = "0.37", default-features = false, features = ["tokio-native-tls"] }
+futures-util = "0.3"
+sha2 = "0.10"
+base64 = "0.22"
+urlencoding = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

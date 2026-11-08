@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "FtpStar",
+  "version": "0.1.0",
+  "identifier": "hu.ftpstar.app",
+  "build": {
+    "frontendDist": "../www"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "FtpStar",
+        "width": 1400,
+        "height": 880,
+        "minWidth": 960,
+        "minHeight": 600,
+        "resizable": true,
+        "backgroundColor": "#1e2128",
+        "visible": false,
+        "create": false
+      },
+      {
+        "label": "splashscreen",
+        "title": "FtpStar",
+        "url": "splash.html",
+        "width": 460,
+        "height": 300,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "create": false,
+        "backgroundColor": "#140d33"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "licenseFile": "../LICENSE"
+  }
+}
