@@ -101,6 +101,7 @@ const EN = {
   'Ennyi ideig vár a kapcsolódásra, illetve egy elakadt átvitelre (5–600). Lassú szervernél növeld.': 'How long to wait for a connection or a stalled transfer (5–600). Raise it for a slow server.',
   'Átviteli sor': 'Transfer queue',
   'Távoli szerkesztés': 'Remote editing',
+  'Ikonok és bélyegképek': 'Icons and thumbnails',
   'Magyar / English': 'Magyar / English',
   'Verzió': 'Version',
   'Rendszer': 'System',
@@ -302,7 +303,7 @@ const EN = {
   'Amazon S3 és S3-kompatibilis szolgáltatók (R2, MinIO, Wasabi…): a kulcsokat oldalanként az Oldalkezelőben add meg.': 'Amazon S3 and S3-compatible services (R2, MinIO, Wasabi…): enter the keys per site in the Site Manager.',
 
   // about
-  'FTP, FTPS, SFTP, Amazon S3 (és kompatibilis) és Microsoft OneDrive kliens két panellel, átviteli sorral, mappa-összevetéssel és távoli szerkesztéssel.': 'FTP, FTPS, SFTP, Amazon S3 (and compatible) and Microsoft OneDrive client with two panes, a transfer queue, folder comparison and remote editing.',
+  'FTP, FTPS, SFTP, Amazon S3 (és kompatibilis) és Microsoft OneDrive kliens két panellel, átviteli sorral, mappa-összevetéssel, távoli szerkesztéssel és képek bélyegképeivel.': 'FTP, FTPS, SFTP, Amazon S3 (and compatible) and Microsoft OneDrive client with two panes, a transfer queue, folder comparison, remote editing and image thumbnails.',
   'A GitStar testvérprogramja.': 'A sibling of GitStar.',
   'Beállítások mappája: {0}': 'Settings folder: {0}',
   'Beállítások mappája': 'Settings folder',

@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/icon.svg" width="120" alt="FtpStar"></p>
+<p align="center"><img src="assets/icon.svg" width="200" height="200" alt="FtpStar"></p>
 
 # FtpStar
 
@@ -7,6 +7,10 @@ A two-pane file transfer client for **FTP, FTPS, SFTP, Amazon S3 (and S3-compati
 Current version **0.2.0** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
 
 Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). Freeware.
+
+![FtpStar: a local folder and an FTPS server side by side](docs/screenshot-main.webp)
+
+![Large icon view with thumbnails of the images on the server](docs/screenshot-thumbnails.webp)
 
 ## Features
 
