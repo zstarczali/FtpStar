@@ -1025,7 +1025,12 @@ async function deleteSel(tab, side) {
     try {
       if (side === 'local') await invoke('local_remove', { path });
       else await invoke('remote_remove', { session: tab.session, path, dir: e.dir });
-    } catch (er) { errors++; toast(`${e.name}: ${friendly(er)}`, 'err'); }
+    } catch (er) {
+      errors++;
+      // NFS "silly rename": a file deleted while open somewhere; the server removes it itself once closed
+      toast(/^\.nfs[0-9a-f]+$/i.test(e.name) ? t('{0}: ez egy ideiglenes NFS-fájl. A szerver akkor hozza létre, ha egy fájlt nyitott állapotban töröltek vagy felülírtak, és csak akkor engedi törölni, amikor a fájlt használó folyamat (pl. a webszerver) bezárta. Általában magától eltűnik; ha napok múlva is megvan, a tárhelyszolgáltató tudja törölni.', e.name)
+        : `${e.name}: ${friendly(er)}`, 'err', /^\.nfs/i.test(e.name) ? 15000 : undefined);
+    }
   }
   setBusy(false);
   if (!errors) toast(t('{0} elem törölve', sel.length), 'ok');

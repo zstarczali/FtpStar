@@ -290,6 +290,12 @@ impl Ftp {
                 }
                 Err(e) => {
                     drop(data);
+                    // Close this session before the partial file is removed: a server
+                    // process still holding the file open turns the delete into a
+                    // stuck ".nfsXXXX" file on NFS-backed hosting.
+                    let _ = s.quit();
+                    drop(s);
+                    std::thread::sleep(std::time::Duration::from_millis(800));
                     // remove the partial file on a fresh connection; ignore errors
                     if let Ok(mut c) = connect(&me.site, &me.password) {
                         let _ = c.rm(&remote);

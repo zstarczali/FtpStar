@@ -351,4 +351,5 @@ const EN = {
   'Az almappákkal együtt': 'Including subfolders',
   'A célnál újabb fájlok is (felülírja a régebbit)': 'Also files newer than on the target (overwrites the older one)',
   '{0} fájl a sorban.': '{0} file(s) queued.',
+  '{0}: ez egy ideiglenes NFS-fájl. A szerver akkor hozza létre, ha egy fájlt nyitott állapotban töröltek vagy felülírtak, és csak akkor engedi törölni, amikor a fájlt használó folyamat (pl. a webszerver) bezárta. Általában magától eltűnik; ha napok múlva is megvan, a tárhelyszolgáltató tudja törölni.': '{0}: this is a temporary NFS file. The server creates it when a file is deleted or overwritten while still open, and lets it be deleted only once the process using it (e.g. the web server) has closed it. It usually disappears by itself; if it is still there after days, the hosting provider can remove it.',
 };
