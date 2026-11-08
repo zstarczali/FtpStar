@@ -1,6 +1,17 @@
 FtpStar - What's new
 ====================
 
+0.2.0
+-----
+- Views for every pane: details, small icons and large icons (buttons
+  next to the filter, or the pane's context menu); remembered per side.
+- Image thumbnails (jpg, png, gif, webp, bmp, ico, svg) in the icon
+  views, made as they scroll into view. Remote images up to 20 MB are
+  downloaded once to a cache folder.
+- Arrow keys move across the icon grid; selection, double-click, drag
+  and drop and the compare colours work on the icons too.
+- Fix: the Update tab in Settings read "Refresh" in English.
+
 0.1.1
 -----
 - Settings > General > Network timeout (5-600 s, default 30): used when
