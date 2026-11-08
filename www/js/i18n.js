@@ -90,6 +90,8 @@ const EN = {
   'Megszakítva': 'Cancelled',
   'A OneDrive-hoz add meg az Azure alkalmazás azonosítóját a Beállításokban.': 'For OneDrive, enter the Azure application id in Settings.',
   'Jelentkezz be a OneDrive-ba az Oldalkezelőben.': 'Sign in to OneDrive in the Site Manager.',
+  'Nincs megadva a szerver címe.': 'No server address given.',
+  'Nincs megadva a bucket neve.': 'No bucket name given.',
 
   // welcome
   'FTP, FTPS, SFTP, Amazon S3 és OneDrive kliens két panellel, átviteli sorral.': 'FTP, FTPS, SFTP, Amazon S3 and OneDrive client with two panes and a transfer queue.',

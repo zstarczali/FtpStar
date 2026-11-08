@@ -205,8 +205,24 @@ async function askPassword(tab) {
   return res.pw;
 }
 
+/** What is missing for a connection, or null. */
+function siteProblem(s) {
+  if (['ftp', 'ftps', 'ftps-implicit', 'sftp'].includes(s.protocol) && !s.host.trim()) return t('Nincs megadva a szerver címe.');
+  if (s.protocol === 's3' && !s.s3_bucket.trim()) return t('Nincs megadva a bucket neve.');
+  if (s.protocol === 'onedrive' && !s.onedrive_refresh_token) return t('Jelentkezz be a OneDrive-ba az Oldalkezelőben.');
+  return null;
+}
+
 async function connectTab(tab, accept = null, password = null) {
   if (tab.status === 'connecting') return;
+  const problem = siteProblem(tab.site);
+  if (problem) {
+    tab.error = problem;
+    renderAll();
+    toast(problem, 'err');
+    if (S.sites.some((x) => x.id === tab.site.id)) siteManager(tab.site.id);
+    return;
+  }
   if (password == null) {
     password = await askPassword(tab);
     if (password == null) { tab.status = 'offline'; renderAll(); return; }
@@ -1292,7 +1308,7 @@ async function siteManager(selectId = null, mode = null) {
     h('button.btn.sm', { type: 'button', on: { click: async () => { const s0 = get(); if (!s0) return; if (!(await confirmDlg(t('Oldal törlése'), t('Törlöd ezt az oldalt: {0}?', s0.name || s0.host), t('Törlés'), true))) return; sites.splice(sites.indexOf(s0), 1); selId = sites[0]?.id || null; drawList(); drawForm(); } } }, icon('trash')));
 
   let finish;
-  const body = h('div.sm', h('div.sm-left', search, listEl, tools), formEl);
+  const body = h('div.sitemgr', h('div.sm-left', search, listEl, tools), formEl);
   drawList(); drawForm();
   const res = await new Promise((resolve) => {
     finish = (v) => { document.querySelector('.overlay:last-of-type .modal-x')?.click(); resolve(v); };
@@ -1308,7 +1324,11 @@ async function siteManager(selectId = null, mode = null) {
   await saveSites();
   // open tabs follow the edited sites
   for (const tab of S.tabs) { const s = sites.find((x) => x.id === tab.site.id); if (s) tab.site = { ...s }; }
-  if (res === 'connect' && get()) openTab(get());
+  if (res === 'connect' && get()) {
+    const problem = siteProblem(get());
+    if (problem) { toast(problem, 'err'); renderAll(); return siteManager(get().id); }
+    openTab(get());
+  }
   else renderAll();
 }
 
