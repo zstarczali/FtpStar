@@ -1125,7 +1125,6 @@ async function transfer(tab, fromSide, { dstPath = null, items = null } = {}) {
   const skipped = jobs.filter((j) => skip.has(j));
   if (!add.length) { toast(t('Nincs mit átvinni (minden fájl kihagyva).')); listPane(tab, toSide); return { jobs: add, skipped }; }
   S.queue.push(...add);
-  if (!S.queueOpen && add.length > 1) { S.queueOpen = true; }
   renderQueue();
   renderToolbar();
   pump();
