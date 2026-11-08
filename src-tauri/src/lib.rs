@@ -95,6 +95,7 @@ pub fn run() {
             commands::cancel_transfer,
             commands::onedrive_device_start,
             commands::onedrive_device_poll,
+            commands::clipboard_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running FtpStar");

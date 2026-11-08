@@ -604,7 +604,7 @@ function rowsOrder(tab, side) {
 
 function selectRow(tab, side, name, e) {
   const pane = tab[side];
-  if (name === '..') { pane.sel.clear(); pane.cursor = null; renderRows(tab, side); renderToolbar(); return; }
+  if (name === '..') { pane.sel.clear(); pane.cursor = null; paintSelection(tab, side); renderToolbar(); return; }
   if (e?.shiftKey && pane.anchor) {
     const order = rowsOrder(tab, side);
     const a = order.indexOf(pane.anchor), b = order.indexOf(name);
@@ -618,9 +618,24 @@ function selectRow(tab, side, name, e) {
     pane.anchor = name;
   }
   pane.cursor = name;
-  renderRows(tab, side);
+  paintSelection(tab, side);
   renderToolbar();
   renderStatus();
+}
+
+/** Updates the selected / cursor marks on the existing rows, keeping the
+ * row elements (rebuilding them between two clicks breaks double-click). */
+function paintSelection(tab, side) {
+  const pane = tab[side];
+  const body = pane.el?.querySelector('.fp-body');
+  if (!body) return;
+  for (const r of body.querySelectorAll('.frow')) {
+    const n = r.dataset.name;
+    r.classList.toggle('sel', pane.sel.has(n));
+    r.classList.toggle('cur', pane.cursor === n);
+  }
+  body.querySelector('.frow.cur')?.scrollIntoView({ block: 'nearest' });
+  renderFoot(tab, side);
 }
 
 function openEntry(tab, side, name) {
@@ -635,6 +650,7 @@ function openEntry(tab, side, name) {
 }
 
 let drag = null;
+let lastClick = null;
 
 function wireBody(tab, side, body) {
   const rowOf = (ev) => ev.target.closest('.frow');
@@ -642,9 +658,15 @@ function wireBody(tab, side, body) {
     const r = rowOf(e);
     if (!r) { if (!e.ctrlKey && !e.shiftKey) { tab[side].sel.clear(); renderRows(tab, side); renderToolbar(); } return; }
     if (drag?.moved) return;
-    selectRow(tab, side, r.dataset.name, e);
+    const name = r.dataset.name;
+    // our own double-click detection: the same row twice within 450 ms
+    const now = performance.now();
+    const dbl = lastClick && lastClick.body === body && lastClick.name === name && now - lastClick.time < 450
+      && Math.hypot(e.clientX - lastClick.x, e.clientY - lastClick.y) < 6 && !e.shiftKey && !e.ctrlKey && !e.metaKey;
+    lastClick = dbl ? null : { body, name, time: now, x: e.clientX, y: e.clientY };
+    if (dbl) { openEntry(tab, side, name); return; }
+    selectRow(tab, side, name, e);
   });
-  body.addEventListener('dblclick', (e) => { const r = rowOf(e); if (r) openEntry(tab, side, r.dataset.name); });
   body.addEventListener('contextmenu', (e) => {
     const r = rowOf(e);
     const pane = tab[side];
@@ -761,6 +783,7 @@ document.addEventListener('keydown', (e) => {
   const order = rowsOrder(tab, side);
   const hasUp = sideParent(side, pane.path) != null && !pane.filter;
   if (mod && e.key.toLowerCase() === 'r') { e.preventDefault(); listPane(tab, 'local'); listPane(tab, 'remote'); return; }
+  if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); pasteFiles(tab); return; }
   if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); pane.sel = new Set(order); renderRows(tab, side); renderToolbar(); return; }
   switch (e.key) {
     case 'Tab': e.preventDefault(); setFocus(tab, side === 'local' ? 'remote' : 'local'); return;
@@ -1031,21 +1054,34 @@ listen('xfer', (ev) => {
 });
 
 // OS files dropped on the window: upload when dropped on the remote side
-listen('tauri://drag-drop', async (ev) => {
-  const tab = cur();
-  const { paths, position } = ev.payload || {};
-  if (!tab || !paths?.length) return;
-  const el = document.elementFromPoint(position.x / devicePixelRatio, position.y / devicePixelRatio);
-  if (!el?.closest('.fpane.remote')) { toast(t('Fájlok feltöltéséhez a jobb oldali (távoli) panelre húzd őket.')); return; }
+/** Uploads files / folders given by their local paths (drop, paste). */
+async function uploadPaths(tab, paths, folder = null) {
   if (!tab.session) { toast(t('Nincs kapcsolat.'), 'err'); return; }
   const items = [];
   for (const p of paths) {
     const st = await invoke('local_stat', { path: p });
     if (st.exists) items.push({ name: p.replace(/[\\/]+$/, '').split(/[\\/]/).pop(), dir: st.dir, size: st.size, mtime: st.mtime, path: p });
   }
+  if (items.length) transfer(tab, 'local', { items, dstPath: folder });
+}
+
+/** Ctrl+V: files copied in Explorer / Finder are uploaded to the remote folder. */
+async function pasteFiles(tab) {
+  let paths = [];
+  try { paths = await invoke('clipboard_files'); } catch (er) { toast(String(er), 'err'); return; }
+  if (!paths.length) { toast(t('A vágólapon nincsenek fájlok.')); return; }
+  uploadPaths(tab, paths);
+}
+
+listen('tauri://drag-drop', async (ev) => {
+  const tab = cur();
+  const { paths, position } = ev.payload || {};
+  if (!tab || !paths?.length) return;
+  const el = document.elementFromPoint(position.x / devicePixelRatio, position.y / devicePixelRatio);
+  if (!el?.closest('.fpane.remote')) { toast(t('Fájlok feltöltéséhez a jobb oldali (távoli) panelre húzd őket.')); return; }
   const row = el.closest('.frow.dir');
   const folder = row && row.dataset.name !== '..' ? sideJoin('remote', tab.remote.path, row.dataset.name) : null;
-  transfer(tab, 'local', { items, dstPath: folder });
+  uploadPaths(tab, paths, folder);
 });
 
 // ───────────────────────── queue panel ─────────────────────────

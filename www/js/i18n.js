@@ -92,6 +92,7 @@ const EN = {
   'Jelentkezz be a OneDrive-ba az Oldalkezelőben.': 'Sign in to OneDrive in the Site Manager.',
   'Nincs megadva a szerver címe.': 'No server address given.',
   'Nincs megadva a bucket neve.': 'No bucket name given.',
+  'A vágólapon nincsenek fájlok.': 'There are no files on the clipboard.',
 
   // welcome
   'FTP, FTPS, SFTP, Amazon S3 és OneDrive kliens két panellel, átviteli sorral.': 'FTP, FTPS, SFTP, Amazon S3 and OneDrive client with two panes and a transfer queue.',

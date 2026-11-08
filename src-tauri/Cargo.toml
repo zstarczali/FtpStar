@@ -30,6 +30,7 @@ futures-util = "0.3"
 sha2 = "0.10"
 base64 = "0.22"
 urlencoding = "2"
+arboard = "3"
 
 [profile.release]
 codegen-units = 1

@@ -387,6 +387,17 @@ pub fn window_state_flags() -> tauri_plugin_window_state::StateFlags {
     tauri_plugin_window_state::StateFlags::all() & !tauri_plugin_window_state::StateFlags::VISIBLE
 }
 
+/// Files copied in Explorer / Finder (CF_HDROP / file URLs).
+#[tauri::command]
+pub async fn clipboard_files() -> Result<Vec<String>, String> {
+    tokio::task::spawn_blocking(|| {
+        let mut cb = arboard::Clipboard::new().map_err(|e| e.to_string())?;
+        Ok(cb.get().file_list().map(|v| v.into_iter().map(|p| p.display().to_string()).collect()).unwrap_or_default())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Creates a window declared in tauri.conf.json (with `create: false`).
 pub fn create_window(app: &AppHandle, label: &str) -> Result<(), String> {
     let cfg = app.config().app.windows.iter().find(|w| w.label == label).cloned().ok_or_else(|| format!("no '{label}' window"))?;
