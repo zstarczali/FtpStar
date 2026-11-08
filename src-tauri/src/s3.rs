@@ -79,7 +79,9 @@ impl S3 {
         let prefix = key(path, true);
         let res = self.bucket.list(prefix.clone(), Some("/".into())).await.map_err(err)?;
         let mut out = vec![];
+        let mut marker = false;
         for r in res {
+            marker |= r.contents.iter().any(|o| o.key == prefix);
             for cp in r.common_prefixes.unwrap_or_default() {
                 let name = cp.prefix[prefix.len()..].trim_end_matches('/').to_string();
                 if !name.is_empty() {
@@ -93,6 +95,10 @@ impl S3 {
                 let mtime = chrono::DateTime::parse_from_rfc3339(&o.last_modified).ok().map(|d| d.timestamp());
                 out.push(Entry { name: o.key[prefix.len()..].to_string(), dir: false, size: o.size, mtime, perms: None, link: false });
             }
+        }
+        // S3 has no real folders: nothing under the prefix and no folder marker = no such folder
+        if out.is_empty() && !marker && !prefix.is_empty() {
+            return Err(format!("{}: {path}", crate::settings::tr("A mappa nem létezik", "The folder does not exist")));
         }
         sort_entries(&mut out);
         Ok(out)

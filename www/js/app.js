@@ -596,7 +596,7 @@ function renderPaneHead(tab, side) {
   const remote = side === 'remote';
   const title = remote ? (tab.site.name || tab.site.host) : t('Helyi gép');
   const pathInp = h('input.inp.fp-path', { value: pane.path || (isWin() ? t('Meghajtók') : '/'), spellcheck: 'false',
-    on: { keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); navigate(tab, side, e.target.value.trim() || (remote ? '/' : '')); } if (e.key === 'Escape') e.target.value = pane.path; } } });
+    on: { keydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); let v = e.target.value.trim() || (remote ? '/' : ''); if (remote && !v.startsWith('/')) v = remoteJoin(pane.path, v); navigate(tab, side, v); } if (e.key === 'Escape') e.target.value = pane.path; } } });
   const filter = h('input.inp.fp-filter', { value: pane.filter, placeholder: t('Szűrő (pl. *.jpg)'), spellcheck: 'false',
     on: { input: (e) => { pane.filter = e.target.value; renderRows(tab, side); } } });
   head.replaceChildren(
