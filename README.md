@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/icon.svg" width="120" alt="FtpStar"></p>
+<p align="center"><img src="assets/icon.svg" width="200" height="200" alt="FtpStar"></p>
 
 # FtpStar
 
