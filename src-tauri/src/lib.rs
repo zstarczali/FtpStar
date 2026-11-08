@@ -1,4 +1,4 @@
-mod commands;
+pub mod commands;
 pub mod conn;
 pub mod ftp;
 pub mod onedrive;
@@ -80,6 +80,9 @@ pub fn run() {
             commands::local_mkdir,
             commands::local_remove,
             commands::local_rename,
+            commands::local_copy,
+            commands::local_move,
+            commands::clipboard_set_files,
             commands::local_stat,
             commands::local_walk,
             commands::temp_dir,
