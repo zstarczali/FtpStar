@@ -1,17 +1,27 @@
 FtpStar - What's new
 ====================
 
-0.4.2
+0.4.3
 -----
-- Fix: OneDrive sign-in (AADSTS9002346) and reconnecting after a
-  restart (AADSTS9002331) failed when the Azure app (its client id in
-  Settings) is registered for personal Microsoft accounts only.
-  FtpStar now switches to the /consumers sign-in endpoint by itself.
 - Fix: New only did not list the folders missing on the target (an
   empty new folder was never copied, and without "With subfolders" the
   new folders did not show at all). They are listed now, in bold;
   ticking or clearing a folder does the same to the files in it.
   Without subfolders a new folder is copied with everything in it.
+- New only: with "Newer files too", files whose size differs from the
+  target are listed as well, even when they are not newer. These rows
+  start unticked, since the dates cannot show which side is more
+  recent.
+- Fix: reconnecting to OneDrive after a restart failed with
+  AADSTS9002331 when the Azure app is registered for personal Microsoft
+  accounts only.
+
+0.4.2
+-----
+- Fix: OneDrive sign-in failed with AADSTS9002346 when the Azure app
+  (its client id in Settings) is registered for personal Microsoft
+  accounts only. FtpStar now switches to the /consumers sign-in
+  endpoint by itself.
 
 0.4.1
 -----

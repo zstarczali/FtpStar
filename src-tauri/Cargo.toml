@@ -1,6 +1,6 @@
 [package]
 name = "ftpstar"
-version = "0.4.2"
+version = "0.4.3"
 description = "FtpStar - FTP, SFTP, S3 and OneDrive client"
 edition = "2021"
 
