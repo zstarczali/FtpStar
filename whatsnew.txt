@@ -7,6 +7,11 @@ FtpStar - What's new
   restart (AADSTS9002331) failed when the Azure app (its client id in
   Settings) is registered for personal Microsoft accounts only.
   FtpStar now switches to the /consumers sign-in endpoint by itself.
+- Fix: New only did not list the folders missing on the target (an
+  empty new folder was never copied, and without "With subfolders" the
+  new folders did not show at all). They are listed now, in bold;
+  ticking or clearing a folder does the same to the files in it.
+  Without subfolders a new folder is copied with everything in it.
 
 0.4.1
 -----
