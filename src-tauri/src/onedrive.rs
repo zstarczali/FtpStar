@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 
-const AUTH: &str = "https://login.microsoftonline.com/common/oauth2/v2.0";
+const LOGIN: &str = "https://login.microsoftonline.com";
 const GRAPH: &str = "https://graph.microsoft.com/v1.0/me/drive";
 const SCOPE: &str = "Files.ReadWrite.All offline_access User.Read";
 /// Upload-session chunk: a multiple of 320 KiB, as Graph requires (5 MiB).
@@ -42,6 +42,32 @@ async fn json_of(r: reqwest::Response) -> Result<Value, String> {
     }
 }
 
+/// Sign-in authority per client id. Apps registered for "personal Microsoft
+/// accounts only" are refused on `/common` (AADSTS9002346) and must use
+/// `/consumers`; the first such refusal switches the client id over.
+static TENANTS: std::sync::Mutex<Vec<(String, &'static str)>> = std::sync::Mutex::new(Vec::new());
+
+fn tenant(client_id: &str) -> &'static str {
+    TENANTS.lock().unwrap().iter().find(|(c, _)| c == client_id).map(|(_, t)| *t).unwrap_or("common")
+}
+
+/// POST a form to the token service (`devicecode` or `token`), retrying on
+/// `/consumers` when the app is personal-account-only.
+async fn auth_post(http: &reqwest::Client, client_id: &str, endpoint: &str, form: &[(&str, &str)]) -> Result<(reqwest::StatusCode, Value), String> {
+    let client_id = client_id.trim();
+    loop {
+        let t = tenant(client_id);
+        let r = http.post(format!("{LOGIN}/{t}/oauth2/v2.0/{endpoint}")).form(form).send().await.map_err(|e| e.to_string())?;
+        let status = r.status();
+        let v: Value = r.json().await.unwrap_or(Value::Null);
+        if t == "common" && v["error_description"].as_str().is_some_and(|d| d.contains("AADSTS9002346")) {
+            TENANTS.lock().unwrap().push((client_id.to_string(), "consumers"));
+            continue;
+        }
+        return Ok((status, v));
+    }
+}
+
 #[derive(Serialize)]
 pub struct DeviceCode {
     pub device_code: String,
@@ -56,13 +82,10 @@ pub async fn device_start(client_id: &str) -> Result<DeviceCode, String> {
     if client_id.trim().is_empty() {
         return Err("ONEDRIVE_NO_CLIENT_ID".into());
     }
-    let r = client()
-        .post(format!("{AUTH}/devicecode"))
-        .form(&[("client_id", client_id.trim()), ("scope", SCOPE)])
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let v = json_of(r).await?;
+    let (status, v) = auth_post(&client(), client_id, "devicecode", &[("client_id", client_id.trim()), ("scope", SCOPE)]).await?;
+    if !status.is_success() {
+        return Err(graph_error(&v, status));
+    }
     Ok(DeviceCode {
         device_code: v["device_code"].as_str().unwrap_or_default().into(),
         user_code: v["user_code"].as_str().unwrap_or_default().into(),
@@ -83,17 +106,8 @@ pub struct PollResult {
 
 /// One poll of the device-code flow: "pending" until the user has signed in.
 pub async fn device_poll(client_id: &str, device_code: &str) -> Result<PollResult, String> {
-    let r = client()
-        .post(format!("{AUTH}/token"))
-        .form(&[
-            ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-            ("client_id", client_id.trim()),
-            ("device_code", device_code),
-        ])
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let v: Value = r.json().await.map_err(|e| e.to_string())?;
+    let form = [("grant_type", "urn:ietf:params:oauth:grant-type:device_code"), ("client_id", client_id.trim()), ("device_code", device_code)];
+    let (_, v) = auth_post(&client(), client_id, "token", &form).await?;
     match v["error"].as_str() {
         Some("authorization_pending") | Some("slow_down") => {
             return Ok(PollResult { status: "pending".into(), refresh_token: String::new(), account: String::new() })
@@ -153,14 +167,11 @@ impl OneDrive {
         if !t.access.is_empty() && t.expires > Instant::now() + Duration::from_secs(60) {
             return Ok(t.access.clone());
         }
-        let r = self
-            .http
-            .post(format!("{AUTH}/token"))
-            .form(&[("grant_type", "refresh_token"), ("client_id", &self.client_id), ("refresh_token", &t.refresh), ("scope", SCOPE)])
-            .send()
-            .await
-            .map_err(|e| e.to_string())?;
-        let v = json_of(r).await.map_err(|e| format!("ONEDRIVE_SIGN_IN:{e}"))?;
+        let form = [("grant_type", "refresh_token"), ("client_id", self.client_id.as_str()), ("refresh_token", t.refresh.as_str()), ("scope", SCOPE)];
+        let (status, v) = auth_post(&self.http, &self.client_id, "token", &form).await?;
+        if !status.is_success() {
+            return Err(format!("ONEDRIVE_SIGN_IN:{}", graph_error(&v, status)));
+        }
         t.access = v["access_token"].as_str().unwrap_or_default().into();
         t.expires = Instant::now() + Duration::from_secs(v["expires_in"].as_u64().unwrap_or(3600));
         if let Some(rt) = v["refresh_token"].as_str() {
