@@ -1,13 +1,16 @@
 FtpStar Installation Guide
 ==========================
 
-Version 0.4.2
+Version 0.4.3
 -------------
 A two-pane FTP, FTPS, SFTP, Amazon S3 (and S3-compatible) and Microsoft
 OneDrive client with a transfer queue, folder compare and remote
 editing. A sibling of GitStar.
 
-New in 0.4.2: OneDrive sign-in also works with an Azure app registered
+New in 0.4.3: "New only" also lists and copies the folders missing on
+the target, empty ones too.
+
+Since 0.4.2: OneDrive sign-in also works with an Azure app registered
 for personal Microsoft accounts only.
 
 Since 0.4.1: in "New only" you can untick the files you do not want

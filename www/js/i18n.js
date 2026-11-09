@@ -353,6 +353,9 @@ const EN = {
   'Nincs kijelölt fájl.': 'No files selected.',
   'Az almappákkal együtt': 'Including subfolders',
   'A célnál újabb fájlok is (felülírja a régebbit)': 'Also files newer than on the target (overwrites the older one)',
+  'A megváltozott fájlok is: újabb vagy eltérő méretű (felülírja a célon lévőt)': 'Also changed files: newer or a different size (overwrites the one on the target)',
+  'Eltérő méret, de nem újabb a célnál: lehet, hogy a célon lévő a frissebb.': 'Different size, but not newer than on the target: the one on the target may be the more recent.',
+  '{0} fájl ({1}) kerül át: {2} új, {3} módosult.': '{0} file(s) ({1}) will be copied: {2} new, {3} changed.',
   '{0} fájl a sorban.': '{0} file(s) queued.',
   '{0}: ez egy ideiglenes NFS-fájl. A szerver akkor hozza létre, ha egy fájlt nyitott állapotban töröltek vagy felülírtak, és csak akkor engedi törölni, amikor a fájlt használó folyamat (pl. a webszerver) bezárta. Általában magától eltűnik; ha napok múlva is megvan, a tárhelyszolgáltató tudja törölni.': '{0}: this is a temporary NFS file. The server creates it when a file is deleted or overwritten while still open, and lets it be deleted only once the process using it (e.g. the web server) has closed it. It usually disappears by itself; if it is still there after days, the hosting provider can remove it.',
 };
