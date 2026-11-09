@@ -208,6 +208,9 @@ body.dragging, body.dragging * { cursor: copy !important; }
 .sync-route .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono, monospace); }
 .sync-opts { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 12px; }
 .sync-sum { font-weight: 600; margin-bottom: 6px; }
-.sync-list { max-height: 220px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-family: var(--mono, monospace); white-space: pre; }
+.sync-all { margin-bottom: 4px; font-size: 12.5px; }
+.sync-list { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-family: var(--mono, monospace); white-space: pre; }
+.sync-list label { display: flex; align-items: center; gap: 2px; cursor: pointer; padding: 1px 0; }
+.sync-list input { margin: 0 4px 0 0; flex: none; }
 .sync-list .new { color: var(--ok, #3fbf74); }
 .sync-list .upd { color: var(--warn, #e3a33a); }

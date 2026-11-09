@@ -1,6 +1,22 @@
 FtpStar - What's new
 ====================
 
+0.4.2
+-----
+- Fix: OneDrive sign-in failed with AADSTS9002346 when the Azure app
+  (its client id in Settings) is registered for personal Microsoft
+  accounts only. FtpStar now switches to the /consumers sign-in
+  endpoint by itself.
+
+0.4.1
+-----
+- New only: every file in the list has a tick box, and only the ticked
+  ones are copied. The "All" box above the list ticks or clears them
+  all; the summary counts the ticked files.
+- New only remembers "With subfolders" and "Newer files too" for the
+  next time.
+- New only: the From / To labels no longer show (A) and (B).
+
 0.4.0
 -----
 - New only (toolbar, or right-click > Upload / Download only the new

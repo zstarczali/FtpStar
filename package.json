@@ -1,6 +1,6 @@
 {
   "name": "ftpstar",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "private": true,
   "description": "FtpStar - FTP, SFTP, S3 and OneDrive client (Tauri 2 + Rust)",
   "scripts": {
