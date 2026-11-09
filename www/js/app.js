@@ -1327,6 +1327,7 @@ async function syncNewDlg(tab, fromSide) {
   // plan: what the ticked rows copy — files, and the folders to create
   let found = [], plan = { files: [], dirs: [] };
   const skip = new Set(); // rel paths unticked by the user (kept when the options change)
+  const offered = new Set(); // 'chg' rows already listed once (unticked the first time only)
   const boxes = new Map(); // rel → tick box of the rows shown
   const under = (dir, rel) => rel.startsWith(dir + '/');
   // what is ticked: the summary, the "all" box and the plan
@@ -1346,7 +1347,7 @@ async function syncNewDlg(tab, fromSide) {
     const nNew = files.filter((p) => p.kind === 'new').length;
     const nDirs = plan.dirs.length;
     sum.textContent = !found.length ? t('Nincs új fájl: a cél naprakész.')
-      : files.length || nDirs ? [files.length ? t('{0} fájl ({1}) kerül át: {2} új, {3} újabb.', files.length, fmtSize(bytes), nNew, files.length - nNew) : '',
+      : files.length || nDirs ? [files.length ? t('{0} fájl ({1}) kerül át: {2} új, {3} módosult.', files.length, fmtSize(bytes), nNew, files.length - nNew) : '',
         nDirs ? t('{0} új mappa.', nDirs) : ''].filter(Boolean).join(' ')
         : t('Nincs kijelölt fájl.');
     all.checked = ticked.length === found.length;
@@ -1361,6 +1362,12 @@ async function syncNewDlg(tab, fromSide) {
       if (f.dir) { if (!d) found.push({ f, kind: 'dir' }); continue; }
       if (!d) found.push({ f, kind: 'new' });
       else if (newer.checked && !d.dir && (f.mtime || 0) > (d.mtime || 0) + 1) found.push({ f, kind: 'upd' });
+      // a different size with an older (or equal) date: changed on one side, but the
+      // dates cannot tell which; listed unticked, the user decides
+      else if (newer.checked && !d.dir && f.size !== d.size) {
+        if (!offered.has(f.rel)) { offered.add(f.rel); skip.add(f.rel); }
+        found.push({ f, kind: 'chg' });
+      }
     }
     boxes.clear();
     list.replaceChildren(...found.slice(0, MAX_ROWS).map((p) => {
@@ -1373,7 +1380,9 @@ async function syncNewDlg(tab, fromSide) {
         if (p.kind === 'dir') for (const q of found) if (under(rel, q.f.rel)) { tick(q.f.rel, cb.checked); const b = boxes.get(q.f.rel); if (b) b.checked = cb.checked; }
         recount();
       });
-      return h('label.' + (p.kind === 'dir' ? 'new.dir' : p.kind), cb, (p.kind === 'upd' ? ' ↑ ' : ' + ') + rel + (p.kind === 'dir' ? '/' : ''));
+      return h('label.' + (p.kind === 'dir' ? 'new.dir' : p.kind),
+        p.kind === 'chg' ? { title: t('Eltérő méret, de nem újabb a célnál: lehet, hogy a célon lévő a frissebb.') } : {},
+        cb, ({ upd: ' ↑ ', chg: ' ≠ ' }[p.kind] || ' + ') + rel + (p.kind === 'dir' ? '/' : ''));
     }), ...(found.length > MAX_ROWS ? [h('div', `… (+${found.length - MAX_ROWS})`)] : []));
     list.style.display = allRow.style.display = found.length ? '' : 'none';
     recount();
@@ -1395,7 +1404,7 @@ async function syncNewDlg(tab, fromSide) {
         h('span.k', t('Ide')), h('span.v', { title: dstDir }, where(toSide, dstDir))),
       h('div.sync-opts',
         h('label.chk', subs, ' ', t('Az almappákkal együtt')),
-        h('label.chk', newer, ' ', t('A célnál újabb fájlok is (felülírja a régebbit)'))),
+        h('label.chk', newer, ' ', t('A megváltozott fájlok is: újabb vagy eltérő méretű (felülírja a célon lévőt)'))),
       sum, allRow, list),
     buttons: [{ label: t('Mégse'), value: null }, { label: fromSide === 'local' ? t('Feltöltés') : t('Letöltés'), value: true, primary: true }],
   });
