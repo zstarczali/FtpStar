@@ -1323,38 +1323,64 @@ async function syncNewDlg(tab, fromSide) {
   const allRow = h('label.chk.sync-all', all, ' ', t('Mind'));
   const list = h('div.sync-list');
   const MAX_ROWS = 2000;
-  let found = [], plan = [];
+  // found: the listed rows (kind: dir = folder missing on the target, new, upd);
+  // plan: what the ticked rows copy — files, and the folders to create
+  let found = [], plan = { files: [], dirs: [] };
   const skip = new Set(); // rel paths unticked by the user (kept when the options change)
+  const boxes = new Map(); // rel → tick box of the rows shown
+  const under = (dir, rel) => rel.startsWith(dir + '/');
   // what is ticked: the summary, the "all" box and the plan
   const recount = () => {
-    plan = found.filter((p) => !skip.has(p.f.rel));
-    const bytes = plan.reduce((a, p) => a + (p.f.size || 0), 0);
-    const nNew = plan.filter((p) => p.kind === 'new').length;
+    const ticked = found.filter((p) => !skip.has(p.f.rel));
+    const files = ticked.filter((p) => p.kind !== 'dir');
+    const dirs = new Set(ticked.filter((p) => p.kind === 'dir').map((p) => p.f.rel));
+    // without subfolders a new folder is listed alone, and comes with everything in it
+    if (!subs.checked) {
+      for (const d of [...dirs]) {
+        for (const f of src) if (under(d, f.rel)) { if (f.dir) dirs.add(f.rel); else files.push({ f, kind: 'new' }); }
+      }
+    }
+    for (const p of files) { const parts = p.f.rel.split('/'); for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/')); }
+    plan = { files, dirs: [...dirs].filter((d) => !have.has(d.toLowerCase())).sort() };
+    const bytes = files.reduce((a, p) => a + (p.f.size || 0), 0);
+    const nNew = files.filter((p) => p.kind === 'new').length;
+    const nDirs = plan.dirs.length;
     sum.textContent = !found.length ? t('Nincs új fájl: a cél naprakész.')
-      : plan.length ? t('{0} fájl ({1}) kerül át: {2} új, {3} újabb.', plan.length, fmtSize(bytes), nNew, plan.length - nNew)
+      : files.length || nDirs ? [files.length ? t('{0} fájl ({1}) kerül át: {2} új, {3} újabb.', files.length, fmtSize(bytes), nNew, files.length - nNew) : '',
+        nDirs ? t('{0} új mappa.', nDirs) : ''].filter(Boolean).join(' ')
         : t('Nincs kijelölt fájl.');
-    all.checked = plan.length === found.length;
-    all.indeterminate = plan.length > 0 && plan.length < found.length;
+    all.checked = ticked.length === found.length;
+    all.indeterminate = ticked.length > 0 && ticked.length < found.length;
   };
+  const tick = (rel, on) => { if (on) skip.delete(rel); else skip.add(rel); };
   const update = () => {
     found = [];
     for (const f of src) {
-      if (f.dir || (!subs.checked && f.rel.includes('/'))) continue;
+      if (!subs.checked && f.rel.includes('/')) continue;
       const d = have.get(f.rel.toLowerCase());
+      if (f.dir) { if (!d) found.push({ f, kind: 'dir' }); continue; }
       if (!d) found.push({ f, kind: 'new' });
       else if (newer.checked && !d.dir && (f.mtime || 0) > (d.mtime || 0) + 1) found.push({ f, kind: 'upd' });
     }
+    boxes.clear();
     list.replaceChildren(...found.slice(0, MAX_ROWS).map((p) => {
-      const cb = h('input', { type: 'checkbox', checked: !skip.has(p.f.rel) });
-      cb.addEventListener('change', () => { if (cb.checked) skip.delete(p.f.rel); else skip.add(p.f.rel); recount(); });
-      return h('label.' + p.kind, cb, (p.kind === 'new' ? ' + ' : ' ↑ ') + p.f.rel);
+      const rel = p.f.rel;
+      const cb = h('input', { type: 'checkbox', checked: !skip.has(rel) });
+      boxes.set(rel, cb);
+      cb.addEventListener('change', () => {
+        tick(rel, cb.checked);
+        // a folder ticks or clears what is listed inside it
+        if (p.kind === 'dir') for (const q of found) if (under(rel, q.f.rel)) { tick(q.f.rel, cb.checked); const b = boxes.get(q.f.rel); if (b) b.checked = cb.checked; }
+        recount();
+      });
+      return h('label.' + (p.kind === 'dir' ? 'new.dir' : p.kind), cb, (p.kind === 'upd' ? ' ↑ ' : ' + ') + rel + (p.kind === 'dir' ? '/' : ''));
     }), ...(found.length > MAX_ROWS ? [h('div', `… (+${found.length - MAX_ROWS})`)] : []));
     list.style.display = allRow.style.display = found.length ? '' : 'none';
     recount();
   };
   all.addEventListener('change', () => {
-    for (const p of found) { if (all.checked) skip.delete(p.f.rel); else skip.add(p.f.rel); }
-    for (const cb of list.querySelectorAll('input')) cb.checked = all.checked;
+    for (const p of found) tick(p.f.rel, all.checked);
+    for (const cb of boxes.values()) cb.checked = all.checked;
     recount();
   });
   subs.addEventListener('change', () => { uiSet('fs.syncSubs', subs.checked ? '1' : '0'); update(); });
@@ -1373,20 +1399,18 @@ async function syncNewDlg(tab, fromSide) {
       sum, allRow, list),
     buttons: [{ label: t('Mégse'), value: null }, { label: fromSide === 'local' ? t('Feltöltés') : t('Letöltés'), value: true, primary: true }],
   });
-  if (!ok || !plan.length) return;
+  if (!ok || !(plan.files.length || plan.dirs.length)) return;
   // folders first, then the files into the queue
   const up = fromSide === 'local';
-  const dirs = new Set();
-  for (const p of plan) { const parts = p.f.rel.split('/'); for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/')); }
   setBusy(true);
   try {
-    for (const d of [...dirs].sort()) {
-      if (have.has(d.toLowerCase())) continue;
+    for (const d of plan.dirs) {
       const path = sideJoinRel(toSide, dstDir, d);
       await (up ? invoke('remote_mkdir', { session: tab.session, path }) : invoke('local_mkdir', { path })).catch(() => {});
     }
   } finally { setBusy(false); }
-  const jobs = plan.map((p) => mkJob(tab, up, sideJoinRel(fromSide, srcDir, p.f.rel), sideJoinRel(toSide, dstDir, p.f.rel), p.f.rel, p.f.size));
+  if (!plan.files.length) { toast(t('{0} új mappa.', plan.dirs.length), 'ok'); listPane(tab, toSide); return; }
+  const jobs = plan.files.map((p) => mkJob(tab, up, sideJoinRel(fromSide, srcDir, p.f.rel), sideJoinRel(toSide, dstDir, p.f.rel), p.f.rel, p.f.size));
   S.queue.push(...jobs);
   renderQueue();
   renderToolbar();

@@ -345,6 +345,7 @@ const EN = {
   'Csak az új fájlok feltöltése…': 'Upload only the new files…',
   '{0} fájl ({1}) kerül át: {2} új, {3} újabb.': '{0} file(s) ({1}) will be copied: {2} new, {3} newer.',
   'Nincs új fájl: a cél naprakész.': 'No new files: the target is up to date.',
+  '{0} új mappa.': '{0} new folder(s).',
   'Csak az új fájlok másolása': 'Copy only the new files',
   'Innen': 'From',
   'Ide': 'To',
