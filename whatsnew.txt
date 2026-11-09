@@ -3,10 +3,10 @@ FtpStar - What's new
 
 0.4.2
 -----
-- Fix: OneDrive sign-in failed with AADSTS9002346 when the Azure app
-  (its client id in Settings) is registered for personal Microsoft
-  accounts only. FtpStar now switches to the /consumers sign-in
-  endpoint by itself.
+- Fix: OneDrive sign-in (AADSTS9002346) and reconnecting after a
+  restart (AADSTS9002331) failed when the Azure app (its client id in
+  Settings) is registered for personal Microsoft accounts only.
+  FtpStar now switches to the /consumers sign-in endpoint by itself.
 
 0.4.1
 -----
