@@ -43,7 +43,7 @@ async fn json_of(r: reqwest::Response) -> Result<Value, String> {
 }
 
 /// Sign-in authority per client id. Apps registered for "personal Microsoft
-/// accounts only" are refused on `/common` (AADSTS9002346) and must use
+/// accounts only" are refused on `/common` (AADSTS9002346 / 9002331) and must use
 /// `/consumers`; the first such refusal switches the client id over.
 static TENANTS: std::sync::Mutex<Vec<(String, &'static str)>> = std::sync::Mutex::new(Vec::new());
 
@@ -60,7 +60,8 @@ async fn auth_post(http: &reqwest::Client, client_id: &str, endpoint: &str, form
         let r = http.post(format!("{LOGIN}/{t}/oauth2/v2.0/{endpoint}")).form(form).send().await.map_err(|e| e.to_string())?;
         let status = r.status();
         let v: Value = r.json().await.unwrap_or(Value::Null);
-        if t == "common" && v["error_description"].as_str().is_some_and(|d| d.contains("AADSTS9002346")) {
+        // AADSTS9002346 (device code) / AADSTS9002331 (token): "use the /consumers endpoint"
+        if t == "common" && v["error_description"].as_str().is_some_and(|d| d.contains("AADSTS9002346") || d.contains("AADSTS9002331") || d.contains("/consumers endpoint")) {
             TENANTS.lock().unwrap().push((client_id.to_string(), "consumers"));
             continue;
         }
