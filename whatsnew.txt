@@ -1,6 +1,14 @@
 FtpStar - What's new
 ====================
 
+0.4.4
+-----
+- Fix: on macOS the self-update only downloaded and opened the .dmg
+  instead of installing it. The disk image carried a license
+  agreement, which stopped the silent mount. The macOS .dmg has no
+  license page any more, and the updater accepts one if present, so
+  FtpStar replaces itself and restarts, as on Windows.
+
 0.4.3
 -----
 - Fix: New only did not list the folders missing on the target (an

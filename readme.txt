@@ -1,8 +1,11 @@
 FtpStar Installation Guide
 ==========================
 
-Version 0.4.3
+Version 0.4.4
 -------------
+On macOS the self-update installs the new version and restarts
+FtpStar, instead of only opening the downloaded .dmg.
+
 A two-pane FTP, FTPS, SFTP, Amazon S3 (and S3-compatible) and Microsoft
 OneDrive client with a transfer queue, folder compare and remote
 editing. A sibling of GitStar.

@@ -228,7 +228,8 @@ fn launch_update_installer(file: &Path) -> Result<bool, String> {
         let script = r#"PID="$1"; DMG="$2"; TARGET="$3"
 while kill -0 "$PID" 2>/dev/null; do sleep 0.5; done
 MNT=$(mktemp -d /tmp/ftpstar-update.XXXXXX)
-if ! hdiutil attach -nobrowse -quiet -mountpoint "$MNT" "$DMG"; then open "$DMG"; exit 1; fi
+# a DMG with a license agreement waits for "Y" on stdin: answer it, or the attach fails
+if ! yes | hdiutil attach -nobrowse -noautoopen -mountpoint "$MNT" "$DMG" >/dev/null 2>&1; then open "$DMG"; exit 1; fi
 SRC=$(ls -d "$MNT"/*.app 2>/dev/null | head -n 1)
 if [ -n "$SRC" ] && rm -rf "$TARGET.new" && ditto "$SRC" "$TARGET.new"; then
   rm -rf "$TARGET.old"; mv "$TARGET" "$TARGET.old" && mv "$TARGET.new" "$TARGET" && rm -rf "$TARGET.old"
