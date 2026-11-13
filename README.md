@@ -2,6 +2,31 @@
 
 # FtpStar
 
+<!-- badges:start -->
+<p align="center">
+  <a href="https://www.c64va.pro/ftpstar.html"><img src="https://img.shields.io/badge/website-c64va.pro-e05d44?style=flat" alt="Website"></a>
+  <a href="https://github.com/zstarczali/FtpStar/blob/main/package.json"><img src="https://img.shields.io/github/package-json/v/zstarczali/FtpStar/main?label=version&color=4c1" alt="Version"></a>
+  <a href="https://github.com/zstarczali/FtpStar/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/zstarczali/FtpStar/build.yml?branch=main&label=build" alt="Build"></a>
+  <a href="https://github.com/zstarczali/FtpStar/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-freeware-blue" alt="License: Freeware"></a>
+  <a href="https://www.c64va.pro/register/donate.php"><img src="https://img.shields.io/badge/donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Donate"></a>
+</p>
+<p align="center">
+  <a href="https://v2.tauri.app/"><img src="https://img.shields.io/badge/Tauri-2-24C8D8?logo=tauri&logoColor=white" alt="Tauri 2"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-backend-B7410E?logo=rust&logoColor=white" alt="Rust"></a>
+  <a href="https://www.c64va.pro/ftpstar.html"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-555" alt="Platforms"></a>
+  <a href="https://github.com/zstarczali/FtpStar/commits/main"><img src="https://img.shields.io/github/last-commit/zstarczali/FtpStar/main" alt="Last commit"></a>
+  <a href="https://github.com/zstarczali/FtpStar/graphs/commit-activity"><img src="https://img.shields.io/github/commit-activity/m/zstarczali/FtpStar" alt="Commit activity"></a>
+  <a href="https://github.com/zstarczali/FtpStar/issues"><img src="https://img.shields.io/github/issues/zstarczali/FtpStar" alt="Issues"></a>
+  <a href="https://github.com/zstarczali/FtpStar/stargazers"><img src="https://img.shields.io/github/stars/zstarczali/FtpStar?style=flat" alt="Stars"></a>
+</p>
+<p align="center">
+  <a href="https://github.com/zstarczali/FtpStar#readme"><img src="https://img.shields.io/badge/English-ddd" alt="English"></a>
+  <a href="https://github.com/zstarczali/FtpStar#readme"><img src="https://img.shields.io/badge/Magyar-ddd" alt="Magyar"></a>
+  <a href="https://github.com/zstarczali/GitStar"><img src="https://img.shields.io/badge/sibling-GitStar-8a2be2" alt="GitStar"></a>
+  <a href="https://github.com/zstarczali/DiffStar"><img src="https://img.shields.io/badge/sibling-DiffStar-8a2be2" alt="DiffStar"></a>
+</p>
+<!-- badges:end -->
+
 A two-pane file transfer client for **FTP, FTPS, SFTP, Amazon S3 (and S3-compatible storage) and Microsoft OneDrive**, built with Tauri 2 and Rust. A sibling of [GitStar](https://github.com/zstarczali/GitStar): the same look, the same themes.
 
 Current version **0.4.4** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
