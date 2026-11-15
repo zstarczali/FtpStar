@@ -2017,7 +2017,7 @@ async function settingsDlg() {
       chk('show_hidden', t('Rejtett fájlok megjelenítése (.pont kezdetű nevek)'), s.show_hidden),
       chk('confirm_delete', t('Megerősítés törlés előtt'), s.confirm_delete !== false))],
     ['look', t('Megjelenés'), h('div.settings-grid',
-      fld('theme', t('Téma'), sel([['dark', t('Sötét')], ['light', t('Világos')], ['ai', 'AI (neon)'], ['retro', t('Retró (8 bites)')], ['modern', t('Modern (üveg)')], ['modern-dark', t('Modern sötét (üveg)')], ['system', t('Rendszer szerint')]], s.theme || 'dark')),
+      fld('theme', t('Téma'), sel([['dark', t('Sötét')], ['light', t('Világos')], ['ai', 'Neon'], ['retro', t('Retró (8 bites)')], ['modern', t('Modern (üveg)')], ['modern-dark', t('Modern sötét (üveg)')], ['system', t('Rendszer szerint')]], s.theme || 'dark')),
       fld('font_size', t('Betűméret'), h('input.inp', { type: 'number', min: 10, max: 20, value: s.font_size || 13 })),
       fld('zoom', t('Nagyítás'), sel(ZOOMS.map((z) => [String(z), Math.round(z * 100) + '%']), String(ZOOMS.includes(s.zoom) ? s.zoom : 1)), t('Gyorsan: Ctrl + / Ctrl − / Ctrl 0, vagy Ctrl + egérgörgő.')))],
     ['cloud', t('Felhő'), h('div.settings-grid',

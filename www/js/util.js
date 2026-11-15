@@ -163,7 +163,7 @@ const isAi = () => document.documentElement.dataset.theme === 'ai';
 // one gradient for every AI theme icon (CSS: stroke: url(#ai-grad))
 document.addEventListener('DOMContentLoaded', () => {
   const d = document.createElement('div');
-  d.innerHTML = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="ai-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#a855f7"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs></svg>';
+  d.innerHTML = '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="ai-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#00f0ff"/><stop offset=".5" stop-color="#c04bff"/><stop offset="1" stop-color="#ff2bd6"/></linearGradient></defs></svg>';
   document.body.prepend(d.firstChild);
 });
 
