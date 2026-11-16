@@ -1,61 +1,21 @@
-FtpStar Freeware License
-========================
+MIT License
 
-Copyright (c) 2026 Zsolt Tarczali. All rights reserved.
+Copyright (c) 2026 Zsolt Tarczali
 
-FtpStar ("the Software") is freeware. It is owned by Zsolt Tarczali and is
-licensed, not sold.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. Permitted use
-   You may download, install and use the Software free of charge, for any
-   personal, educational or commercial purpose, on any number of computers.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-2. Restrictions
-   Without the prior written permission of the copyright holder you may not:
-   a) copy, redistribute, publish, share, upload or otherwise make the
-      Software, its installers or its source code available to others
-      (including mirrors, download sites, app stores and bundles);
-   b) sell, rent, lease or sublicense the Software, or charge any fee for it;
-   c) modify, translate, adapt or create derivative works of the Software;
-   d) reverse engineer, decompile or disassemble the Software, except where
-      applicable law expressly permits it;
-   e) remove or alter any copyright notice, trademark or this license.
-
-   The only authorized source of the Software is its official download
-   location. Point others there instead of passing on copies.
-
-3. Third-party components
-   The Software includes open source components (such as Tauri, Rust crates
-   and WebView2 runtime bindings) that remain under their own licenses.
-   Nothing in this license limits your rights under those licenses.
-
-4. Servers and cloud services
-   The Software connects only to the servers and cloud services you
-   configure (FTP, SFTP, Amazon S3 or S3-compatible storage, Microsoft
-   OneDrive), with your own credentials. Your use of those services is
-   governed by their providers' terms.
-
-5. No warranty
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
-
-6. Limitation of liability
-   IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES
-   OR OTHER LIABILITY, INCLUDING LOSS OF DATA OR REPOSITORY CONTENTS,
-   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
-   Always keep backups of important repositories.
-
-7. Termination
-   This license ends automatically if you break its terms. You must then
-   stop using the Software and delete all copies.
-
-Questions and permission requests: Zsolt Tarczali, the copyright holder.
-
-
----------------------------------------------------------------------------
-Röviden magyarul (tájékoztató, a fenti angol szöveg az irányadó):
-A FtpStar ingyenes program. Szabadon letöltheted, telepítheted és
-használhatod bármilyen célra, akár munkában is. A szerző írásos engedélye
-nélkül nem szabad másolni, továbbadni, közzétenni, feltölteni, árulni vagy
-módosítani. A program garancia nélkül, "ahogy van" alapon érhető el.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

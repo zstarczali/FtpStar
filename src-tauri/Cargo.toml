@@ -3,6 +3,7 @@ name = "ftpstar"
 version = "0.5.0"
 description = "FtpStar - FTP, SFTP, S3 and OneDrive client"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "ftpstar_lib"
