@@ -1,3 +1,5 @@
+mod ai;
+mod claude_cli;
 pub mod commands;
 pub mod conn;
 pub mod ftp;
@@ -7,6 +9,7 @@ pub mod settings;
 pub mod sftp;
 pub mod thumb;
 mod update;
+mod usage;
 pub mod xfer;
 
 use commands::AppState;
@@ -48,6 +51,7 @@ pub fn run() {
         .setup(|app| {
             commands::mark_start();
             let dir = app.path().app_config_dir().unwrap_or_else(|_| std::env::temp_dir().join("FtpStar"));
+            usage::init(app.handle().clone(), dir.clone());
             app.manage(AppState::new(settings::Store::load(dir)));
             // the windows are created only now, so their first calls find the state
             for label in ["splashscreen", "main"] {
@@ -106,6 +110,10 @@ pub fn run() {
             commands::local_thumb,
             commands::remote_thumb,
             commands::set_ui_language,
+            commands::ai_folder,
+            commands::ai_test,
+            usage::ai_usage,
+            usage::ai_usage_reset,
             update::check_for_update,
             update::download_and_install_update,
             update::update_server_check,

@@ -538,3 +538,79 @@ pub async fn ui_ready(app: AppHandle) {
     tokio::time::sleep(SPLASH_TIME.saturating_sub(shown)).await;
     finish_splash(&app);
 }
+
+// ───────────────────────────── AI ─────────────────────────────
+
+#[derive(Serialize)]
+pub struct AiResult {
+    pub text: String,
+    pub truncated: bool,
+}
+
+/// Earlier questions and answers of the AI panel, for follow-up questions.
+#[derive(serde::Deserialize, Default)]
+pub struct Turn {
+    pub q: String,
+    pub a: String,
+}
+
+/// Analyses the comparison of a local and a remote folder (made by the UI: names,
+/// sizes, dates and the result per file; no file contents).
+#[tauri::command]
+pub async fn ai_folder(state: State<'_, AppState>, report: String, question: Option<String>, history: Option<Vec<Turn>>) -> Result<AiResult, String> {
+    use crate::settings::tr;
+    let cfg = state.store.settings();
+    if !cfg.ai_enabled {
+        return Err(tr("Az AI funkciók ki vannak kapcsolva (Beállítások → AI).", "The AI features are switched off (Settings → AI)."));
+    }
+    let (body, truncated) = crate::ai::cut_diff(&report, &cfg.ai_provider);
+    let mut user = format!("<compare>\n{body}\n</compare>\n");
+    if truncated {
+        user.push_str("\nNote: the report was cut because of its size; say so if it matters.\n");
+    }
+    for t in history.unwrap_or_default() {
+        user.push_str("\n\nEarlier request: ");
+        user.push_str(if t.q.is_empty() { crate::ai::FOLDER_DEFAULT_ASK } else { &t.q });
+        user.push_str("\nYour earlier answer:\n");
+        user.push_str(&t.a);
+    }
+    match question.filter(|q| !q.trim().is_empty()) {
+        Some(q) => {
+            user.push_str("\n\nRequest: ");
+            user.push_str(&q);
+        }
+        None => {
+            user.push_str("\n\n");
+            user.push_str(crate::ai::FOLDER_DEFAULT_ASK);
+        }
+    }
+    let text = crate::ai::complete(crate::ai::AiRequest {
+        provider: &cfg.ai_provider,
+        api_key: cfg.ai_key(),
+        model: cfg.ai_model_id(),
+        system: crate::ai::folder_system(&cfg.ai_language),
+        user,
+        effort: "medium",
+        max_tokens: 16000,
+    })
+    .await?;
+    Ok(AiResult { text, truncated })
+}
+
+/// Settings → AI → Test: a tiny request with the values typed in the dialog.
+#[tauri::command]
+pub async fn ai_test(provider: String, api_key: String, model: String) -> Result<String, String> {
+    let started = std::time::Instant::now();
+    let text = crate::ai::complete(crate::ai::AiRequest {
+        provider: &provider,
+        api_key: &api_key,
+        model: &model,
+        system: "You are a connection test. Answer with exactly: OK".to_string(),
+        user: "Connection test. Answer with exactly: OK".to_string(),
+        effort: "low",
+        max_tokens: 200,
+    })
+    .await?;
+    let first: String = text.lines().next().unwrap_or("").chars().take(80).collect();
+    Ok(format!("{model} · {} ms · „{first}”", started.elapsed().as_millis()))
+}
