@@ -110,7 +110,7 @@ const EN = {
   'Bezárod a(z) „{0}” fület?\nA kapcsolat bontódik, az oldal az Oldalkezelőben megmarad.': 'Close the “{0}” tab?\nThe connection is closed; the site stays in the Site Manager.',
   'Adomány': 'Donate',
   'Az FtpStar ingyenes. Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést.': 'FtpStar is free. If you find it useful, a small donation supports its development.',
-  'Az FtpStar ingyenes (freeware). Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!': 'FtpStar is freeware. If you find it useful, a small donation supports its development. Thank you!',
+  'Az FtpStar ingyenes, MIT-licencű. Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!': 'FtpStar is free and MIT-licensed. If you find it useful, a small donation supports its development. Thank you!',
   'Frissítések keresése': 'Check for updates',
   'Kattints a telepítéshez': 'Click to install',
   'Frissítés elérhető: v{0}': 'Update available: v{0}',

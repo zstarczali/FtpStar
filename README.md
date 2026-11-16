@@ -7,7 +7,7 @@
   <a href="https://www.c64va.pro/ftpstar.html"><img src="https://img.shields.io/badge/website-c64va.pro-e05d44?style=flat" alt="Website"></a>
   <a href="https://github.com/zstarczali/FtpStar/blob/main/package.json"><img src="https://img.shields.io/github/package-json/v/zstarczali/FtpStar/main?label=version&color=4c1" alt="Version"></a>
   <a href="https://github.com/zstarczali/FtpStar/actions/workflows/build.yml"><img src="https://img.shields.io/github/actions/workflow/status/zstarczali/FtpStar/build.yml?branch=main&label=build" alt="Build"></a>
-  <a href="https://github.com/zstarczali/FtpStar/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-freeware-blue" alt="License: Freeware"></a>
+  <a href="https://github.com/zstarczali/FtpStar/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License: MIT"></a>
   <a href="https://www.c64va.pro/register/donate.php"><img src="https://img.shields.io/badge/donate-PayPal-00457C?logo=paypal&logoColor=white" alt="Donate"></a>
 </p>
 <p align="center">
@@ -31,7 +31,7 @@ A two-pane file transfer client for **FTP, FTPS, SFTP, Amazon S3 (and S3-compati
 
 Current version **0.5.0** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
 
-Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). Freeware.
+Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). MIT-licensed.
 
 
 ## Features
@@ -96,4 +96,4 @@ Bug reports and ideas are welcome in [Issues](https://github.com/zstarczali/FtpS
 
 ## License
 
-Freeware, © 2026 Zsolt Tarczali. See [LICENSE](LICENSE). The source is public for reference; redistribution and derivative works need permission (see the license). Download the installers from the [website](https://www.c64va.pro/ftpstar.html).
+MIT License, © 2026 Zsolt Tarczali. See [LICENSE](LICENSE). Download the installers from the [website](https://www.c64va.pro/ftpstar.html).

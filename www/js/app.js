@@ -2297,7 +2297,7 @@ async function aboutDlg() {
     ].map(([k, v]) => [h('span.k', k), h('span.v', { title: v }, v)]),
       h('span.k', t('Weboldal')), h('span.v', h('a.about-link', { title: SITE_URL, on: { click: () => invoke('open_url', { url: SITE_URL }).catch((e) => toast(String(e), 'err')) } }, SITE_URL.replace(/^https:\/\//, '')))),
     h('div.about-foot', t('Rust + Tauri 2. A GitStar testvérprogramja.')),
-    h('div.about-free', t('Az FtpStar ingyenes (freeware). Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!')),
+    h('div.about-free', t('Az FtpStar ingyenes, MIT-licencű. Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést. Köszönöm!')),
     h('div.about-copy', '© 2026 Zsolt Tarczali')),
     buttons: [{ label: t('Adomány'), value: 'donate' }, { label: t('Frissítések keresése'), value: 'update' },
       { label: t('Beállítások mappája'), value: 'folder' }, { label: t('Bezárás'), value: true, primary: true }],

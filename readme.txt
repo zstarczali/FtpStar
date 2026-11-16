@@ -163,3 +163,6 @@ Where the data is
 settings.json, sites.json and known_hosts.json are in the app's
 configuration folder (About > Settings folder). Saved passwords are
 stored in sites.json on this computer.
+
+License: MIT. Copyright (c) 2026 Zsolt Tarczali. See LICENSE.
+Third-party components retain their own licenses.
