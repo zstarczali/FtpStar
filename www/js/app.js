@@ -4,8 +4,9 @@
 import { t, setLang, getLang } from './i18n.js';
 import {
   invoke, h, icon, toast, modal, confirmDlg, formDlg, contextMenu, editMenu, fmtDate,
-  initUiState, uiGet, uiSet, splitter, debounce,
+  initUiState, uiGet, uiSet, splitter, debounce, markdown,
 } from './util.js';
+import { aiUsageInit, aiUsageItem } from './aiusage.js';
 
 const listen = (ev, cb) => window.__TAURI__.event.listen(ev, cb);
 
@@ -37,6 +38,12 @@ export const PROTOS = {
 const TAB_COLORS = ['', '#4c8dff', '#3fbf74', '#e3a33a', '#ef5d5d', '#b65cf0', '#22d3ee', '#e05577'];
 
 const cur = () => S.tabs[S.active] || null;
+const aiOn = () => !!S.settings?.ai_enabled;
+const isDeepSeek = () => S.settings?.ai_provider === 'deepseek';
+const isClaudeCli = () => S.settings?.ai_provider === 'claude-cli';
+const aiKey = () => (isClaudeCli() ? 'cli' : (isDeepSeek() ? S.settings?.deepseek_api_key : S.settings?.anthropic_api_key) || '');
+const aiProviderName = () => (isDeepSeek() ? 'DeepSeek' : isClaudeCli() ? 'Claude Code CLI' : 'Anthropic Claude');
+const aiModel = () => (isDeepSeek() ? S.settings?.deepseek_model : S.settings?.ai_model) || '';
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
 // ───────────────────────── formatting ─────────────────────────
@@ -445,6 +452,7 @@ function renderToolbar() {
     h('div.tb-sep'),
     tb('sync', t('Csak újak'), () => syncNewDlg(tab, tab.focus), { disabled: !on, title: t('Csak az új fájlok átmásolása a kijelölt (aktív) oldalról a másikra, az almappákkal együtt; előtte megmutatja, mi kerül át') }),
     tb('compare', t('Összevetés'), () => { tab.compare = !tab.compare; renderAll(); }, { disabled: !on, cls: tab?.compare ? '.on' : '', title: t('A két oldal összevetése: hiányzó, eltérő és újabb fájlok kiemelése') }),
+    aiOn() ? tb('sparkle', t('AI elemzés'), () => aiFolder(tab), { disabled: !on, cls: '.ai', title: t('A két mappa (almappákkal) összevetése, és AI összefoglaló: mi változott, melyik oldal újabb, kockázatok, teendők') }) : null,
     tb('edit', t('Szerkesztés'), () => editRemote(tab), { disabled: !on || tab.focus !== 'remote' || fp.sel.size !== 1 || [...fp.entries].find((e) => fp.sel.has(e.name))?.dir, title: t('Távoli fájl megnyitása szerkesztésre; mentéskor automatikusan visszatöltődik') }),
     h('div.tb-spacer'),
     ...(S.donationVisible ? [h('span.tb-donate', tb('heart', t('Adomány'), () => openDonate(), { title: t('Az FtpStar ingyenes. Ha hasznos neked, egy kis adománnyal támogathatod a fejlesztést.') }))] : []),
@@ -1427,6 +1435,152 @@ async function syncNewDlg(tab, fromSide) {
   toast(t('{0} fájl a sorban.', jobs.length), 'ok');
 }
 
+// ───────────────────────── AI ─────────────────────────
+
+/**
+ * The AI panel (as in GitStar / DiffStar / NoteStar). run(question, history) -> {text, truncated};
+ * presets: quick requests; actions(answer) -> buttons under each answer.
+ */
+function aiPanel(title, run, presets = [], actions = () => []) {
+  document.querySelector('.ai-panel')?.remove();
+  if (!aiOn()) { toast(t('Az AI funkciók ki vannak kapcsolva (Beállítások → AI).'), 'err'); return null; }
+  if (!aiKey()) {
+    toast(t('Az AI funkciókhoz add meg az API kulcsot (vagy válaszd a Claude Code CLI-t) a Beállításokban.'), 'err');
+    settingsDlg('ai');
+    return null;
+  }
+  const history = [];
+  const body = h('div.ai-body');
+  const input = h('textarea.inp.ai-ask', { rows: 2, placeholder: t('Kérdezz a két mappáról… (Enter: küldés, Shift+Enter: új sor)') });
+  const send = h('button.btn.sm.ai', { on: { click: () => ask(input.value.trim()) } }, icon('sparkle'), t('Küldés'));
+  let busyNow = false;
+  const ask = async (q) => {
+    if (busyNow) return;
+    busyNow = true;
+    send.disabled = true;
+    if (q) body.append(h('div.ai-q', q));
+    input.value = '';
+    const wait = h('div.ai-thinking', icon('sparkle', 'spin'), t('Az AI dolgozik…'));
+    body.append(wait);
+    wait.scrollIntoView({ block: 'end' });
+    try {
+      const res = await run(q || null, history.slice());
+      wait.remove();
+      history.push({ q: q || '', a: res.text });
+      const out = h('div.ai-ans', { html: markdown(res.text) });
+      // links open in the browser; the window itself must never navigate
+      out.addEventListener('click', (e) => {
+        const a = e.target.closest('a[href]');
+        if (!a) return;
+        e.preventDefault();
+        if (/^(https?|mailto):/i.test(a.getAttribute('href'))) invoke('open_url', { url: a.getAttribute('href') }).catch((err) => toast(String(err), 'err'));
+      });
+      const acts = actions(res.text).filter(Boolean);
+      body.append(out, acts.length ? h('div.ai-acts', acts.map((a) => h('button.btn.sm' + (a.primary ? '.primary' : ''), { on: { click: () => a.fn() } }, a.icon ? icon(a.icon) : null, a.label))) : null);
+      if (res.truncated) body.append(h('div.ai-q', t('Megjegyzés: a jelentés túl nagy volt, csak az eleje került elemzésre.')));
+      out.scrollIntoView({ block: 'start' });
+    } catch (e) {
+      wait.replaceWith(h('div', { style: { color: 'var(--danger)' } }, friendly(e)));
+    } finally { busyNow = false; send.disabled = false; input.focus(); }
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value.trim()); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); panel.remove(); }
+  });
+  const panel = h('div.ai-panel',
+    h('div.pane-h', h('span.spark', icon('sparkle')), title, h('span.sub', ` · ${aiModel() || aiProviderName()}`), h('span.grow'),
+      h('button.icon-btn', { title: t('Szöveg másolása'), on: { click: () => navigator.clipboard.writeText(body.innerText).then(() => toast(t('Vágólapra másolva'), 'ok', 1500)) } }, icon('copy')),
+      h('button.icon-btn', { title: t('Bezárás (Esc)'), on: { click: () => panel.remove() } }, icon('close'))),
+    body,
+    h('div.ai-foot',
+      presets.length ? h('div.ai-presets', presets.map((p) => h('button.btn.sm', { on: { click: () => ask(p) } }, p))) : null,
+      h('div.ai-askrow', input, send)));
+  document.body.append(panel);
+  return { ask, input };
+}
+
+/**
+ * Both folders walked with subfolders and compared file by file; the report (names, sizes,
+ * dates, result — no file contents) goes to the AI. A folder that exists on one side only is
+ * listed once, with what is in it.
+ */
+async function folderReport(tab) {
+  const walk = (side, path) => invoke(side === 'local' ? 'local_walk' : 'remote_walk', side === 'local' ? { path } : { session: tab.session, path });
+  const L = tab.local.path, R = tab.remote.path;
+  let loc, rem;
+  setBusy(true);
+  try {
+    [loc, rem] = await Promise.all([walk('local', L), walk('remote', R).catch(() => [])]);
+  } finally { setBusy(false); }
+  const hidden = (x) => x.rel.split('/').some((p) => p.startsWith('.'));
+  if (!S.settings.show_hidden) { loc = loc.filter((x) => !hidden(x)); rem = rem.filter((x) => !hidden(x)); }
+  const key = (rel) => rel.toLowerCase();
+  const lm = new Map(loc.map((x) => [key(x.rel), x])), rm = new Map(rem.map((x) => [key(x.rel), x]));
+  const TOL = 60; // seconds: FTP listings often have minute precision
+  const cat = { onlyLocal: [], onlyRemote: [], newerLocal: [], newerRemote: [], sizeDiff: [], same: 0 };
+  // a whole folder missing on the other side: listed once with its contents counted
+  const lonely = (x, other) => { const parts = x.rel.split('/'); for (let i = 1; i < parts.length; i++) if (!other.has(key(parts.slice(0, i).join('/')))) return true; return false; };
+  const folderInfo = (list, rel) => { const pre = key(rel) + '/'; const inside = list.filter((y) => !y.dir && key(y.rel).startsWith(pre)); return { n: inside.length, size: inside.reduce((a, y) => a + (y.size || 0), 0) }; };
+  for (const x of loc) {
+    const o = rm.get(key(x.rel));
+    if (!o) { if (!lonely(x, rm)) cat.onlyLocal.push(x); continue; }
+    if (x.dir || o.dir) continue;
+    const dt = (x.mtime || 0) - (o.mtime || 0);
+    if (dt > TOL) cat.newerLocal.push([x, o]);
+    else if (dt < -TOL) cat.newerRemote.push([x, o]);
+    else if (x.size !== o.size) cat.sizeDiff.push([x, o]);
+    else cat.same++;
+  }
+  for (const x of rem) if (!lm.has(key(x.rel)) && !lonely(x, lm)) cat.onlyRemote.push(x);
+  const d = (m) => (m ? new Date(m * 1000).toISOString().slice(0, 16).replace('T', ' ') : '?');
+  const sz = (n) => `${n} B`;
+  const totals = (list) => { const f = list.filter((x) => !x.dir); return `${f.length} files, ${list.length - f.length} folders, ${f.reduce((a, x) => a + (x.size || 0), 0)} bytes`; };
+  const MAX = 400;
+  const lines = [
+    `Local folder: ${L}`,
+    `Server: ${tab.site.name || tab.site.host} (${PROTOS[tab.site.protocol]?.label || tab.site.protocol}), folder ${R}`,
+    `Compared with subfolders. Hidden (dot) files ${S.settings.show_hidden ? 'included' : 'left out'}. Times are UTC; dates within ${TOL} s count as equal.`,
+    `Local: ${totals(loc)}. Server: ${totals(rem)}.`,
+    `Result: ${cat.onlyLocal.length} only local, ${cat.onlyRemote.length} only on the server, ${cat.newerLocal.length} newer locally, ${cat.newerRemote.length} newer on the server, ${cat.sizeDiff.length} different size with the same date, ${cat.same} the same.`,
+  ];
+  const section = (title, list, fmt) => {
+    lines.push('', `## ${title} (${list.length})`);
+    for (const x of list.slice(0, MAX)) lines.push(fmt(x));
+    if (list.length > MAX) lines.push(`… list cut: ${list.length - MAX} more`);
+  };
+  const one = (list) => (x) => { if (!x.dir) return `${x.rel} | ${sz(x.size || 0)} | ${d(x.mtime)}`; const f = folderInfo(list, x.rel); return `${x.rel}/ (folder: ${f.n} files, ${f.size} bytes)`; };
+  const two = ([a, b]) => `${a.rel} | local ${sz(a.size || 0)} ${d(a.mtime)} | server ${sz(b.size || 0)} ${d(b.mtime)}`;
+  section('Only on the local side', cat.onlyLocal, one(loc));
+  section('Only on the server', cat.onlyRemote, one(rem));
+  section('Newer on the local side', cat.newerLocal, two);
+  section('Newer on the server', cat.newerRemote, two);
+  section('Different size, same date', cat.sizeDiff, two);
+  return { text: lines.join('\n'), cat };
+}
+
+async function aiFolder(tab) {
+  if (!tab?.session) { toast(t('Nincs kapcsolat.'), 'err'); return; }
+  if (!aiOn() || !aiKey()) { aiPanel('', async () => ({})); return; } // shows why and opens Settings
+  let rep;
+  try { rep = await folderReport(tab); } catch (e) { toast(friendly(e), 'err'); return; }
+  const c = rep.cat;
+  const presets = [
+    t('Mit kell feltöltenem?'),
+    t('Mit kell letöltenem?'),
+    t('Van kockázatos vagy felesleges fájl a szerveren?'),
+    t('Melyik oldal a frissebb?'),
+    t('Foglald össze röviden'),
+  ];
+  const panel = aiPanel(t('AI elemzés – {0}', tab.site.name || tab.site.host),
+    (q, history) => invoke('ai_folder', { report: rep.text, question: q, history }), presets,
+    () => [
+      c.onlyLocal.length || c.newerLocal.length ? { label: t('Csak újak feltöltése…'), icon: 'upload', fn: () => syncNewDlg(tab, 'local') } : null,
+      c.onlyRemote.length || c.newerRemote.length ? { label: t('Csak újak letöltése…'), icon: 'download', fn: () => syncNewDlg(tab, 'remote') } : null,
+      { label: t('Eltérők kiemelése'), icon: 'compare', fn: () => { tab.compare = true; renderAll(); } },
+    ]);
+  if (panel) panel.ask(null);
+}
+
 // ───────────────────────── cut / copy / paste ─────────────────────────
 // Ctrl+C / Ctrl+X keep the selection in S.clip (local files also go on the system
 // clipboard, so Explorer / Finder can paste them). Ctrl+V:
@@ -1784,6 +1938,7 @@ function renderStatus() {
     h('span#xfer-status.xfer-status', { on: { click: () => { S.queueOpen = true; uiSet('fs.queueOpen', '1'); renderQueue(); renderToolbar(); renderXferStatus(); } } }),
     watches.length ? h('a', { title: t('Kattints a figyelés leállításához'), on: { click: (e) => contextMenu(e, watches.map((w) => ({ label: t('Figyelés leállítása: {0}', w.name), icon: 'close', action: () => { S.watches = S.watches.filter((x) => x !== w); renderStatus(); } }))) } }, icon('edit'), ' ', t('{0} fájl szerkesztés alatt', watches.length)) : null,
     S.update?.updateAvailable ? h('span.update-status', { title: t('Kattints a telepítéshez'), on: { click: () => updateShowAvailable() } }, icon('download'), t('Frissítés elérhető: v{0}', S.update.latestVersion)) : null,
+    aiOn() ? aiUsageItem(aiKey() ? aiModel() : t('nincs beállítva')) : null,
     h('span.zoom-status', { title: t('Nagyítás (Ctrl + / Ctrl − / Ctrl 0)'), on: { click: () => stepZoom(0) } }, Math.round((S.settings.zoom || 1) * 100) + '%'),
     h('span', 'v' + S.info.version));
   renderXferStatus();
@@ -1992,7 +2147,7 @@ async function quickConnect() {
 
 // ───────────────────────── settings ─────────────────────────
 
-async function settingsDlg() {
+async function settingsDlg(startTab) {
   const s = S.settings;
   const els = {};
   const fld = (name, label, el, note, full) => { els[name] = el; return h('label.field' + (full ? '.full' : ''), h('span', label), el, note ? h('span.note', note) : null); };
@@ -2008,6 +2163,59 @@ async function settingsDlg() {
     await saveSettings();
     checkForAppUpdate();
   };
+  // ── AI (same as GitStar / DiffStar / NoteStar) + on/off switch ──
+  const aiEnabled = h('input', { type: 'checkbox', checked: !!s.ai_enabled });
+  const models = ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-2'];
+  const modelSel = sel([...models.map((m) => [m, m]), ['custom', t('Egyéb…')]], models.includes(s.ai_model) ? s.ai_model : 'custom');
+  const customModel = h('input.inp', { value: models.includes(s.ai_model) ? '' : s.ai_model, placeholder: 'model id', style: { display: models.includes(s.ai_model) ? 'none' : '' } });
+  modelSel.addEventListener('change', () => (customModel.style.display = modelSel.value === 'custom' ? '' : 'none'));
+  const key = h('input.inp', { type: 'password', value: s.anthropic_api_key || '', placeholder: 'sk-ant-…', spellcheck: 'false' });
+  const dsModels = ['deepseek-flash', 'deepseek-v4-pro'];
+  const dsModel = s.deepseek_model || 'deepseek-flash';
+  const dsKey = h('input.inp', { type: 'password', value: s.deepseek_api_key || '', placeholder: 'sk-…', spellcheck: 'false' });
+  const dsModelSel = sel([...dsModels.map((m) => [m, m]), ['custom', t('Egyéb…')]], dsModels.includes(dsModel) ? dsModel : 'custom');
+  const dsCustom = h('input.inp', { value: dsModels.includes(dsModel) ? '' : dsModel, placeholder: 'model id', style: { display: dsModels.includes(dsModel) ? 'none' : '' } });
+  dsModelSel.addEventListener('change', () => (dsCustom.style.display = dsModelSel.value === 'custom' ? '' : 'none'));
+  const providerSel = sel([['anthropic', 'Anthropic Claude (API key)'], ['claude-cli', t('Claude Code CLI (saját bejelentkezés)')], ['deepseek', 'DeepSeek']], s.ai_provider || 'anthropic');
+  const cliPath = h('input.inp', { value: s.claude_cli_path || '', placeholder: t('üres = megkeresi (PATH, ~/.local/bin, Homebrew, npm)'), spellcheck: 'false' });
+  const cliField = h('label.field.full', h('span', t('Claude CLI útvonala')), cliPath,
+    h('span.note', t('A telepített Claude Code CLI-t (claude) futtatja a saját bejelentkezéseddel, így itt nem kell API kulcs. Bejelentkezés: futtasd egyszer a „claude” parancsot egy terminálban.')));
+  const keyField = h('label.field.full', h('span', t('Anthropic API kulcs')), key, h('span.note', t('A kulcs az FtpStar beállításfájljában tárolódik ezen a gépen. Kulcs: console.anthropic.com')));
+  const claudeBox = h('div.settings-sub.full', keyField, cliField,
+    h('label.field', h('span', t('Modell')), modelSel, customModel, h('span.note', t('Alapértelmezés: claude-opus-5-5. Gyorsabb/olcsóbb: claude-haiku-5-5.'))));
+  const dsBox = h('div.settings-sub.full',
+    h('label.field.full', h('span', t('DeepSeek API kulcs')), dsKey, h('span.note', t('A kulcs az FtpStar beállításfájljában tárolódik ezen a gépen. Kulcs: platform.deepseek.com'))),
+    h('label.field', h('span', t('Modell')), dsModelSel, dsCustom, h('span.note', t('Alapértelmezés: deepseek-flash. Erősebb: deepseek-v4-pro.'))));
+  const syncProvider = () => {
+    const ds = providerSel.value === 'deepseek', cli = providerSel.value === 'claude-cli';
+    claudeBox.style.display = ds ? 'none' : ''; dsBox.style.display = ds ? '' : 'none';
+    keyField.style.display = cli ? 'none' : ''; cliField.style.display = cli ? '' : 'none';
+  };
+  providerSel.addEventListener('change', syncProvider);
+  syncProvider();
+  const aiTestOut = h('span.note', '');
+  const aiTestBtn = h('button.btn', { type: 'button', on: { click: async () => {
+    const ds = providerSel.value === 'deepseek', cli = providerSel.value === 'claude-cli';
+    const apiKey = (ds ? dsKey.value : cli ? cliPath.value : key.value).trim();
+    const model = ds ? (dsModelSel.value === 'custom' ? dsCustom.value.trim() || 'deepseek-flash' : dsModelSel.value)
+      : (modelSel.value === 'custom' ? customModel.value.trim() || 'claude-opus-5-5' : modelSel.value);
+    if (!apiKey && !cli) { aiTestOut.className = 'note err'; aiTestOut.textContent = '✗ ' + t('Nincs megadva API kulcs.'); return; }
+    aiTestBtn.disabled = true;
+    aiTestOut.className = 'note';
+    aiTestOut.textContent = t('Tesztelés…');
+    try { aiTestOut.textContent = '✓ ' + (await invoke('ai_test', { provider: providerSel.value, apiKey, model })); aiTestOut.className = 'note ok'; }
+    catch (e) { aiTestOut.textContent = '✗ ' + e; aiTestOut.className = 'note err'; }
+    finally { aiTestBtn.disabled = false; }
+  } } }, t('Teszt'));
+  const aiBox = h('div.settings-grid.full.ai-box',
+    h('label.field.full', h('span', t('AI szolgáltató')), h('div', { style: { display: 'flex', gap: '6px' } }, providerSel, aiTestBtn), aiTestOut),
+    claudeBox, dsBox,
+    fld('ai_language', t('AI válaszok nyelve'), sel([['hu', t('Magyar')], ['en', 'English']], s.ai_language || 'hu')),
+    h('div.note.full', t('Az AI csak akkor kap adatot, ha te kéred (AI elemzés gomb): a két összevetett mappa fájllistáját küldi el a választott szolgáltatónak – neveket, méreteket, dátumokat, a fájlok tartalmát nem. Összefoglalja, mi változott, melyik oldal újabb, mire figyelj, és mit érdemes fel- vagy letölteni.')));
+  const syncAi = () => aiBox.classList.toggle('off', !aiEnabled.checked);
+  aiEnabled.addEventListener('change', syncAi);
+  syncAi();
+
   const tabs = [
     ['general', t('Általános'), h('div.settings-grid',
       fld('ui_language', t('Felület nyelve'), sel([['auto', t('Automatikus (rendszer)')], ['hu', 'Magyar'], ['en', 'English']], s.ui_language || 'auto')),
@@ -2017,13 +2225,17 @@ async function settingsDlg() {
       chk('show_hidden', t('Rejtett fájlok megjelenítése (.pont kezdetű nevek)'), s.show_hidden),
       chk('confirm_delete', t('Megerősítés törlés előtt'), s.confirm_delete !== false))],
     ['look', t('Megjelenés'), h('div.settings-grid',
-      fld('theme', t('Téma'), sel([['dark', t('Sötét')], ['light', t('Világos')], ['ai', 'AI (neon)'], ['retro', t('Retró (8 bites)')], ['modern', t('Modern (üveg)')], ['modern-dark', t('Modern sötét (üveg)')], ['system', t('Rendszer szerint')]], s.theme || 'dark')),
+      fld('theme', t('Téma'), sel([['dark', t('Sötét')], ['light', t('Világos')], ['ai', 'Neon'], ['retro', t('Retró (8 bites)')], ['modern', t('Modern (üveg)')], ['modern-dark', t('Modern sötét (üveg)')], ['system', t('Rendszer szerint')]], s.theme || 'dark')),
       fld('font_size', t('Betűméret'), h('input.inp', { type: 'number', min: 10, max: 20, value: s.font_size || 13 })),
       fld('zoom', t('Nagyítás'), sel(ZOOMS.map((z) => [String(z), Math.round(z * 100) + '%']), String(ZOOMS.includes(s.zoom) ? s.zoom : 1)), t('Gyorsan: Ctrl + / Ctrl − / Ctrl 0, vagy Ctrl + egérgörgő.')))],
     ['cloud', t('Felhő'), h('div.settings-grid',
       fld('onedrive_client_id', t('OneDrive: Azure alkalmazás (client) azonosító'), h('input.inp', { value: s.onedrive_client_id || '', placeholder: '00000000-0000-0000-0000-000000000000', spellcheck: 'false' }),
         t('Egyszer kell beállítani: portal.azure.com → App registrations → New registration (személyes Microsoft-fiókok is), Authentication → „Allow public client flows” = Yes, API permissions: Files.ReadWrite.All, offline_access, User.Read. Az Application (client) ID-t másold ide.'), true),
       h('div.note.full', t('Amazon S3 és S3-kompatibilis szolgáltatók (R2, MinIO, Wasabi…): a kulcsokat oldalanként az Oldalkezelőben add meg.')))],
+    ['ai', 'AI', h('div.settings-grid',
+      h('label.chk.full.ai-switch', aiEnabled, h('b', t('AI funkciók bekapcsolása'))),
+      h('div.note.full', t('Kikapcsolva az FtpStar semmilyen AI szolgáltatóhoz nem fordul, és az AI gomb sem látszik.')),
+      aiBox)],
     ['update', t('Frissítések'), h('div.settings-grid',
       h('label.chk.full', updCheck, t('Új verzió keresése induláskor')),
       h('label.field.full', h('span', t('Frissítési szerver')), h('div', { style: { display: 'flex', gap: '6px' } }, updServer,
@@ -2033,7 +2245,9 @@ async function settingsDlg() {
   const tabBtns = tabs.map(([id, label]) => h('button.stab', { type: 'button', 'data-label': label, on: { click: () => show(id) } }, label));
   const panes = h('div.settings-panes', ...tabs.map((x) => x[2]));
   const show = (id) => { tabs.forEach(([tid, , el], i) => { el.classList.toggle('on', tid === id); tabBtns[i].classList.toggle('on', tid === id); }); uiSet('fs.settingsTab', id); };
-  show(tabs.some((x) => x[0] === uiGet('fs.settingsTab')) ? uiGet('fs.settingsTab') : 'general');
+  // called from a button too: then the argument is the click event
+  const want = (typeof startTab === 'string' && startTab) || uiGet('fs.settingsTab');
+  show(tabs.some((x) => x[0] === want) ? want : 'general');
   const ok = await modal({ title: t('Beállítások'), wide: true, body: h('div.settings', h('div.settings-tabs', ...tabBtns), panes),
     buttons: [{ label: t('Mégse'), value: false }, { label: t('Mentés'), value: true, primary: true }] });
   if (!ok) return;
@@ -2049,6 +2263,14 @@ async function settingsDlg() {
     zoom: +els.zoom.value || 1,
     onedrive_client_id: els.onedrive_client_id.value.trim(),
     update_check: updCheck.checked,
+    ai_enabled: aiEnabled.checked,
+    ai_provider: providerSel.value,
+    claude_cli_path: cliPath.value.trim(),
+    anthropic_api_key: key.value.trim(),
+    ai_model: modelSel.value === 'custom' ? customModel.value.trim() || 'claude-opus-5-5' : modelSel.value,
+    deepseek_api_key: dsKey.value.trim(),
+    deepseek_model: dsModelSel.value === 'custom' ? dsCustom.value.trim() || 'deepseek-flash' : dsModelSel.value,
+    ai_language: els.ai_language.value,
   });
   try { await invoke('update_server_check', { url: updServer.value }); S.settings.update_server = updServer.value.trim(); }
   catch (e) { toast(String(e), 'err'); }
@@ -2256,6 +2478,7 @@ async function init() {
   }
   if (S.tabs.length) S.active = 0;
   renderAll();
+  aiUsageInit(() => renderStatus());
   startDonationTimer();
   invoke('ui_ready').catch(() => {});
   // quiet update check a little after startup (Settings → Update)

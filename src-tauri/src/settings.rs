@@ -58,6 +58,17 @@ pub struct Settings {
     pub update_check: bool,
     /// Version the user chose to skip
     pub update_skip: String,
+    /// AI features on / off (off: no AI provider is ever called)
+    pub ai_enabled: bool,
+    /// "anthropic" | "deepseek" | "claude-cli"
+    pub ai_provider: String,
+    pub claude_cli_path: String,
+    pub anthropic_api_key: String,
+    pub ai_model: String,
+    pub deepseek_api_key: String,
+    pub deepseek_model: String,
+    /// Language of the AI answers: "hu" | "en"
+    pub ai_language: String,
 }
 
 impl Default for Settings {
@@ -79,7 +90,30 @@ impl Default for Settings {
             update_server: String::new(),
             update_check: true,
             update_skip: String::new(),
+            ai_enabled: false,
+            ai_provider: "anthropic".into(),
+            claude_cli_path: String::new(),
+            anthropic_api_key: String::new(),
+            ai_model: "claude-opus-5-5".into(),
+            deepseek_api_key: String::new(),
+            deepseek_model: "deepseek-flash".into(),
+            ai_language: "hu".into(),
         }
+    }
+}
+
+impl Settings {
+    /// The key of the chosen provider (for the Claude CLI: its path).
+    pub fn ai_key(&self) -> &str {
+        match self.ai_provider.as_str() {
+            "deepseek" => &self.deepseek_api_key,
+            "claude-cli" => &self.claude_cli_path,
+            _ => &self.anthropic_api_key,
+        }
+    }
+
+    pub fn ai_model_id(&self) -> &str {
+        if self.ai_provider == "deepseek" { &self.deepseek_model } else { &self.ai_model }
     }
 }
 

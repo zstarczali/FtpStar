@@ -1,6 +1,24 @@
 FtpStar - What's new
 ====================
 
+0.5.0
+-----
+- AI analysis (Settings -> AI, the same providers as in GitStar,
+  DiffStar and NoteStar: Claude API, Claude Code CLI or DeepSeek). The
+  AI analysis button compares the local and the remote folder with
+  their subfolders and sums up what changed: which files are only on
+  one side, which side is newer, what could be overwritten, risky or
+  needless files on the server (.env, .git, backups, logs...), and what
+  to upload or download. Follow-up questions in the AI panel, and
+  buttons for New only upload / download. Only names, sizes and dates
+  are sent, never the file contents.
+- AI token counter in the status bar: the tokens used by the AI
+  features (input, output, prompt cache), counted from every answer of
+  the Claude API, DeepSeek and the Claude Code CLI. Click it for the
+  details per provider and model, this session and all time (with the
+  cost the Claude Code CLI reports), and to reset the counter. The
+  counts are kept across restarts.
+
 0.4.4
 -----
 - Fix: on macOS the self-update only downloaded and opened the .dmg
