@@ -18,6 +18,7 @@ export function t(s, ...args) {
 const EN = {
   // common
   'Bezárás': 'Close',
+  'További fülek: {0}': 'More tabs: {0}',
   'Mégse': 'Cancel',
   'Mentés': 'Save',
   'Törlés': 'Delete',
