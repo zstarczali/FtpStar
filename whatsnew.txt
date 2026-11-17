@@ -1,6 +1,13 @@
 FtpStar - What's new
 ====================
 
+0.5.1
+-----
+- When the connection tabs do not fit in the window, the ones that fit
+  are shown (the active one always) and a "v N" button after them
+  lists the other connections: pick one from its menu to switch to it.
+  The tab bar follows the window width when it is resized.
+
 0.5.0
 -----
 - AI analysis (Settings -> AI, the same providers as in GitStar,

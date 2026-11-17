@@ -3,7 +3,7 @@
 
 import { t, setLang, getLang } from './i18n.js';
 import {
-  invoke, h, icon, toast, modal, confirmDlg, formDlg, contextMenu, editMenu, fmtDate,
+  invoke, h, icon, toast, modal, confirmDlg, formDlg, contextMenu, fitTabs, editMenu, fmtDate,
   initUiState, uiGet, uiSet, splitter, debounce, markdown,
 } from './util.js';
 import { aiUsageInit, aiUsageItem } from './aiusage.js';
@@ -422,6 +422,10 @@ function renderTabs() {
       h('button.x', { title: t('Bezárás'), on: { click: (e) => { e.stopPropagation(); closeTab(i); } } }, icon('close')));
     }),
     h('button.tab-add', { title: t('Új kapcsolat (Oldalkezelő)'), on: { click: () => siteManager() } }, icon('plus')));
+  fitTabs(el, S.active, (i) => {
+    const s = S.tabs[i].site;
+    return { label: s.name || s.host || '?', icon: PROTOS[s.protocol]?.icon || 'server', action: () => activate(i) };
+  });
 }
 
 function tb(ic, label, action, { disabled = false, title = '', badge = null, cls = '' } = {}) {

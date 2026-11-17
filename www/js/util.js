@@ -543,3 +543,54 @@ export function debounce(fn, ms) {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
+
+// ── tab strip overflow ──
+/**
+ * Shows as many tabs of the strip as fit (the active one always); the rest go
+ * into a "⌄ N" button's menu. Call after every render of the strip.
+ * item(i) gives the menu entry ({label, icon, action}) of the i-th tab.
+ */
+export function fitTabs(el, active, item) {
+  let more = el.querySelector(':scope > .tab-more');
+  if (!more) {
+    more = h('button.tab-more', {
+      on: {
+        click: (e) => {
+          const idx = (more.dataset.hidden || '').split(',').filter(Boolean).map(Number);
+          const r = more.getBoundingClientRect();
+          contextMenu({ clientX: r.left, clientY: r.bottom, preventDefault() {}, stopPropagation() {} },
+            idx.map((i) => el._fitTabs.item(i)));
+          e.stopPropagation();
+        },
+      },
+    }, icon('chev'), h('span.n'));
+    el.insertBefore(more, el.querySelector(':scope > .tab-add'));
+  }
+  el._fitTabs = { active, item };
+  if (!el._fitObs) { el._fitObs = new ResizeObserver(() => layoutTabs(el)); el._fitObs.observe(el); }
+  layoutTabs(el);
+}
+
+function layoutTabs(el) {
+  const more = el.querySelector(':scope > .tab-more');
+  if (!more || !el._fitTabs) return;
+  const { active } = el._fitTabs;
+  const tabs = [...el.querySelectorAll(':scope > .tab')];
+  tabs.forEach((x) => { x.hidden = false; });
+  more.hidden = true;
+  if (el.scrollWidth <= el.clientWidth) return;
+  more.hidden = false;
+  const add = el.querySelector(':scope > .tab-add');
+  // margins too: the modern themes space the tabs apart
+  const ws = tabs.map((x) => { const cs = getComputedStyle(x); return x.offsetWidth + parseFloat(cs.marginLeft) + parseFloat(cs.marginRight); });
+  let room = el.clientWidth - more.offsetWidth - (add ? add.offsetWidth : 0) - (ws[active] || 0);
+  const hidden = [];
+  tabs.forEach((x, i) => {
+    if (i === active) return;
+    if (!hidden.length && ws[i] <= room) room -= ws[i];
+    else { x.hidden = true; hidden.push(i); }
+  });
+  more.querySelector('.n').textContent = String(hidden.length);
+  more.title = t('További fülek: {0}', hidden.length);
+  more.dataset.hidden = hidden.join(',');
+}
