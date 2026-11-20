@@ -1,7 +1,7 @@
 FtpStar Installation Guide
 ==========================
 
-Version 0.5.1
+Version 0.5.2
 -------------
 On macOS the self-update installs the new version and restarts
 FtpStar, instead of only opening the downloaded .dmg.

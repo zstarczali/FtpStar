@@ -44,6 +44,8 @@ pub struct Settings {
     /// Parallel transfers per connection (each gets its own connection).
     pub parallel: u32,
     /// Azure app (public client) id for the OneDrive sign-in.
+    /// Legacy: the one OneDrive client id of older versions. Now every site has its
+    /// own; this is only the fallback for sites saved before that.
     pub onedrive_client_id: String,
     /// Open tabs (site ids) restored at start.
     pub open_sites: Vec<String>,
@@ -147,6 +149,8 @@ pub struct Site {
     pub s3_endpoint: String,
     pub s3_bucket: String,
     pub s3_path_style: bool,
+    /// Azure application (client) id of this OneDrive connection; empty = the old global one
+    pub onedrive_client_id: String,
     pub onedrive_refresh_token: String,
     pub onedrive_account: String,
 }

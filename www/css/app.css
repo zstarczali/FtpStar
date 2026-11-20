@@ -101,6 +101,9 @@ svg.i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-widt
 .tab .x:hover { background: var(--bg-3); opacity: 1; }
 .tab[hidden], .tab-more[hidden] { display: none; }
 .tab { flex: none; }
+.tab.dragging { position: relative; z-index: 5; opacity: .85; background: var(--bg-hover); pointer-events: none; }
+.tab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+.tab.drop-after { box-shadow: inset -2px 0 0 var(--accent); }
 .tab-more { flex: none; border: 0; border-right: 1px solid var(--border); background: none; color: var(--text-dim); padding: 0 8px; display: flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; }
 .tab-more:hover { color: var(--text); background: var(--bg-hover); }
 .tab-add { flex: none; border: 0; background: none; color: var(--text-dim); padding: 0 10px; display: flex; align-items: center; }

@@ -290,7 +290,7 @@ pub async fn connect(state: State<'_, AppState>, site: Site, password: Option<St
             (Conn::S3(c), home)
         }
         "onedrive" => {
-            let client_id = store.settings().onedrive_client_id;
+            let client_id = if site.onedrive_client_id.trim().is_empty() { store.settings().onedrive_client_id } else { site.onedrive_client_id.clone() };
             let (st, id) = (store.clone(), site.id.clone());
             let save = Box::new(move |rt: &str| {
                 let rt = rt.to_string();

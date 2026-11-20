@@ -92,6 +92,7 @@ const P = {
   expand: '<path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/>',
   up: '<path d="m6 15 6-6 6 6"/>',
   down: '<path d="m6 9 6 6 6-6"/>',
+  sort: '<path d="M7 4v16M3 8l4-4 4 4"/><path d="M17 20V4M13 16l4 4 4-4"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
@@ -593,4 +594,56 @@ function layoutTabs(el) {
   more.querySelector('.n').textContent = String(hidden.length);
   more.title = t('További fülek: {0}', hidden.length);
   more.dataset.hidden = hidden.join(',');
+}
+
+/**
+ * Drag a tab of the strip to reorder it; call from the tab's pointerdown.
+ * onDrop(from, to) gets the old and new index when the tab really moved.
+ * Pointer events, not HTML5 drag and drop: the webview's file drop handler
+ * swallows the HTML5 drag events on Windows.
+ */
+export function dragTab(e, from, onDrop) {
+  if (e.button !== 0 || e.target.closest('.x')) return;
+  const tab = e.currentTarget;
+  const strip = tab.parentElement;
+  const x0 = e.clientX;
+  let to = from, dragging = false;
+  const clear = () => strip.querySelectorAll('.tab.drop-before, .tab.drop-after').forEach((x) => x.classList.remove('drop-before', 'drop-after'));
+  const move = (ev) => {
+    const dx = ev.clientX - x0;
+    if (!dragging) {
+      if (Math.abs(dx) < 5) return;
+      dragging = true;
+      tab.classList.add('dragging');
+    }
+    tab.style.transform = `translateX(${dx}px)`;
+    // target = the visible tab under the pointer; its left or right half decides the side
+    clear();
+    to = from;
+    [...strip.querySelectorAll(':scope > .tab')].forEach((x, i) => {
+      if (i === from || x.hidden) return;
+      const r = x.getBoundingClientRect();
+      if (ev.clientX < r.left || ev.clientX >= r.right) return;
+      const after = ev.clientX >= r.left + r.width / 2;
+      x.classList.add(after ? 'drop-after' : 'drop-before');
+      to = after ? (i < from ? i + 1 : i) : (i < from ? i : i - 1);
+    });
+  };
+  const up = () => {
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+    window.removeEventListener('pointercancel', up);
+    if (!dragging) return;
+    clear();
+    tab.classList.remove('dragging');
+    tab.style.transform = '';
+    // the click that follows the drop must not switch tabs
+    const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+    window.addEventListener('click', eat, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', eat, { capture: true }));
+    if (to !== from) onDrop(from, to);
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
 }
