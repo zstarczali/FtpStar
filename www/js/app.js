@@ -3,7 +3,7 @@
 
 import { t, setLang, getLang } from './i18n.js';
 import {
-  invoke, h, icon, toast, modal, confirmDlg, formDlg, contextMenu, fitTabs, editMenu, fmtDate,
+  invoke, h, icon, toast, modal, confirmDlg, formDlg, contextMenu, fitTabs, dragTab, editMenu, fmtDate,
   initUiState, uiGet, uiSet, splitter, debounce, markdown,
 } from './util.js';
 import { aiUsageInit, aiUsageItem } from './aiusage.js';
@@ -70,7 +70,7 @@ function friendly(e) {
   if (s === 'AUTH_FAILED') return t('Sikertelen bejelentkezés: hibás felhasználónév, jelszó vagy kulcs.');
   if (s === 'NOT_CONNECTED') return t('Nincs kapcsolat. Kapcsolódj újra.');
   if (s === 'CANCELLED') return t('Megszakítva');
-  if (s === 'ONEDRIVE_NO_CLIENT_ID') return t('A OneDrive-hoz add meg az Azure alkalmazás azonosítóját a Beállításokban.');
+  if (s === 'ONEDRIVE_NO_CLIENT_ID') return t('Add meg a OneDrive-kapcsolat Azure alkalmazás (client) azonosítóját az Oldalkezelőben.');
   if (s.startsWith('ONEDRIVE_SIGN_IN')) return t('Jelentkezz be a OneDrive-ba az Oldalkezelőben.') + (s.includes(':') ? '\n' + s.split(':').slice(1).join(':') : '');
   return s;
 }
@@ -156,7 +156,7 @@ function rememberTabs() {
 // ───────────────────────── tabs & connections ─────────────────────────
 
 function newPane(side, path) {
-  return { side, path, view: uiGet('fs.view.' + side) || 'details', entries: [], sel: new Set(), anchor: null, cursor: null, sort: { key: 'name', asc: true }, filter: '', back: [], loading: false, error: null };
+  return { side, path, view: uiGet('fs.view.' + side) || 'details', entries: [], sel: new Set(), anchor: null, cursor: null, sort: loadSort(side), filter: '', back: [], loading: false, error: null };
 }
 
 function openTab(site, { connect = true } = {}) {
@@ -227,6 +227,7 @@ async function askPassword(tab) {
 function siteProblem(s) {
   if (['ftp', 'ftps', 'ftps-implicit', 'sftp'].includes(s.protocol) && !s.host.trim()) return t('Nincs megadva a szerver címe.');
   if (s.protocol === 's3' && !s.s3_bucket.trim()) return t('Nincs megadva a bucket neve.');
+  if (s.protocol === 'onedrive' && !(s.onedrive_client_id || S.settings.onedrive_client_id || '').trim()) return t('Add meg a OneDrive-kapcsolat Azure alkalmazás (client) azonosítóját az Oldalkezelőben.');
   if (s.protocol === 'onedrive' && !s.onedrive_refresh_token) return t('Jelentkezz be a OneDrive-ba az Oldalkezelőben.');
   return null;
 }
@@ -396,6 +397,14 @@ function statusDot(tab) {
   return h('span.cdot.' + tab.status, { title: { connected: t('Kapcsolódva'), connecting: t('Kapcsolódás…'), offline: t('Nincs kapcsolat') }[tab.status] });
 }
 
+/** Drag & drop reorder of the tabs; the active tab stays active. */
+function moveTab(from, to) {
+  const active = cur();
+  S.tabs.splice(to, 0, ...S.tabs.splice(from, 1));
+  S.active = S.tabs.indexOf(active);
+  renderTabs();
+}
+
 function renderTabs() {
   const el = document.getElementById('tabs');
   el.replaceChildren(
@@ -406,6 +415,7 @@ function renderTabs() {
         title: `${PROTOS[tab.site.protocol]?.label || ''} · ${tab.site.user ? tab.site.user + '@' : ''}${tab.site.host || tab.site.s3_bucket || tab.site.onedrive_account || ''}`,
         on: {
           mousedown: (e) => { if (e.button === 1) { e.preventDefault(); closeTab(i); } },
+          pointerdown: (e) => dragTab(e, i, moveTab),
           click: () => activate(i),
           contextmenu: (e) => contextMenu(e, [
             tab.session ? { label: t('Kapcsolat bontása'), icon: 'unplug', action: () => disconnectTab(tab) } : { label: t('Kapcsolódás'), icon: 'plug', action: () => connectTab(tab) },
@@ -539,6 +549,39 @@ const VIEWS = [
   ['small', 'viewSmall', () => t('Kis ikonok')],
   ['large', 'viewLarge', () => t('Nagy ikonok (képek előnézetével)')],
 ];
+/** Sort orders of the file list (folders always come first). */
+const SORTS = [
+  ['name', () => t('Név')],
+  ['ext', () => t('Típus (kiterjesztés)')],
+  ['size', () => t('Méret')],
+  ['mtime', () => t('Módosítás dátuma')],
+];
+
+/** The remembered sort of a side, stored as "key:1" / "key:0". */
+function loadSort(side) {
+  const [key, asc] = String(uiGet('fs.sort.' + side) || '').split(':');
+  return SORTS.some(([k]) => k === key) ? { key, asc: asc !== '0' } : { key: 'name', asc: true };
+}
+
+function setSort(tab, side, sort) {
+  const pane = tab[side];
+  pane.sort = sort;
+  uiSet('fs.sort.' + side, `${sort.key}:${sort.asc ? 1 : 0}`);
+  renderPane(tab, side);
+}
+
+/** Menu items: the sort keys, then ascending / descending. */
+function sortItems(tab, side) {
+  const { key, asc } = tab[side].sort;
+  return [
+    { header: t('Rendezés') },
+    ...SORTS.map(([k, label]) => ({ label: label() + (key === k ? '  ✓' : ''), action: () => setSort(tab, side, { key: k, asc: key === k ? asc : true }) })),
+    '-',
+    { label: t('Növekvő') + (asc ? '  ✓' : ''), icon: 'up', action: () => setSort(tab, side, { key, asc: true }) },
+    { label: t('Csökkenő') + (!asc ? '  ✓' : ''), icon: 'down', action: () => setSort(tab, side, { key, asc: false }) },
+  ];
+}
+
 const IMG_EXT = /\.(jpe?g|png|gif|webp|bmp|ico|svg)$/i;
 
 /** Details, small icons or large icons; remembered for the side. */
@@ -617,8 +660,11 @@ function renderPaneHead(tab, side) {
     h('div.fp-title', icon(remote ? (PROTOS[tab.site.protocol]?.icon || 'server') : 'drive'), h('span.t', title),
       remote ? statusDot(tab) : null, pane.loading ? icon('refresh', 'spin') : null, h('span.grow'),
       remote && !tab.session && tab.status !== 'connecting' ? h('button.btn.sm.primary', { on: { click: () => connectTab(tab) } }, icon('plug'), t('Kapcsolódás')) : null,
-      h('div.fp-views', VIEWS.map(([v, ic, label]) => h('button.icon-btn' + (pane.view === v ? '.on' : ''),
-        { title: label(), on: { click: () => setView(tab, side, v) } }, icon(ic)))),
+      h('div.fp-views',
+        h('button.icon-btn', { title: t('Rendezés: {0} ({1})', SORTS.find(([k]) => k === pane.sort.key)?.[1]() || '', pane.sort.asc ? t('növekvő') : t('csökkenő')),
+          on: { click: (e) => contextMenu(e, sortItems(tab, side)) } }, icon('sort')),
+        VIEWS.map(([v, ic, label]) => h('button.icon-btn' + (pane.view === v ? '.on' : ''),
+          { title: label(), on: { click: () => setView(tab, side, v) } }, icon(ic)))),
       filter),
     h('div.fp-nav',
       h('button.icon-btn', { title: t('Vissza (Alt+←)'), disabled: !pane.back.length || null, on: { click: () => goBack(tab, side) } }, icon('undo')),
@@ -635,7 +681,7 @@ function renderPane(tab, side) {
   renderPaneHead(tab, side);
   const cols = pane.el.querySelector('.fp-cols');
   cols.replaceChildren(...COLS.map((c) => h('div.fc.c-' + c.key + (pane.sort.key === c.key ? '.sorted' : ''), {
-    on: { click: () => { pane.sort = { key: c.key === 'perms' ? 'name' : c.key, asc: pane.sort.key === c.key ? !pane.sort.asc : true }; renderPane(tab, side); } },
+    on: { click: () => setSort(tab, side, { key: c.key === 'perms' ? 'name' : c.key, asc: pane.sort.key === c.key ? !pane.sort.asc : true }) },
   }, c.label(), pane.sort.key === c.key ? icon(pane.sort.asc ? 'up' : 'down') : null)));
   renderRows(tab, side);
 }
@@ -878,6 +924,8 @@ function paneMenu(e, tab, side) {
     { label: t('Frissítés'), icon: 'refresh', key: 'Ctrl+R', action: () => listPane(tab, side) },
     '-',
     ...VIEWS.map(([v, ic, label]) => ({ label: label() + (pane.view === v ? '  ✓' : ''), icon: ic, action: () => setView(tab, side, v) })),
+    '-',
+    ...sortItems(tab, side),
   ]);
 }
 
@@ -1953,7 +2001,12 @@ function renderStatus() {
 function blankSite(protocol = 'ftp') {
   return { id: uid(), name: '', protocol, host: '', port: 0, user: '', password: '', key_path: '', passphrase: '', active: false,
     remote_dir: '', local_dir: '', color: '', folder: '', notes: '', s3_region: '', s3_endpoint: '', s3_bucket: '', s3_path_style: false,
-    onedrive_refresh_token: '', onedrive_account: '' };
+    onedrive_client_id: protocol === 'onedrive' ? knownClientId() : '', onedrive_refresh_token: '', onedrive_account: '' };
+}
+
+/** A client id to start a new OneDrive site with: another site's, else the old global one. */
+function knownClientId() {
+  return S.sites.find((x) => x.protocol === 'onedrive' && x.onedrive_client_id)?.onedrive_client_id || S.settings.onedrive_client_id || '';
 }
 
 async function siteManager(selectId = null, mode = null) {
@@ -2049,12 +2102,16 @@ async function siteManager(selectId = null, mode = null) {
       ), chk(s, 's3_path_style', t('Path-style címzés (MinIO és sok saját szerver igényli)')));
     }
     if (p === 'onedrive') {
+      if (!s.onedrive_client_id) s.onedrive_client_id = knownClientId();
+      rows.push(h('div.sm-grid',
+        field(t('Azure alkalmazás (client) azonosító'), inp(s, 'onedrive_client_id', { placeholder: '00000000-0000-0000-0000-000000000000' }),
+          t('Egyszer kell beállítani: portal.azure.com → App registrations → New registration (személyes Microsoft-fiókok is), Authentication → „Allow public client flows” = Yes, API permissions: Files.ReadWrite.All, offline_access, User.Read. Az Application (client) ID-t másold ide.'), '.full')));
       const status = h('div.od-status', s.onedrive_refresh_token ? h('span.ok', icon('check'), t('Bejelentkezve: {0}', s.onedrive_account || 'OneDrive')) : h('span', t('Még nincs bejelentkezve.')));
       rows.push(h('div.od-box', status,
         h('div.row',
-          h('button.btn.primary', { type: 'button', on: { click: async () => { const r = await oneDriveSignIn(); if (r) { s.onedrive_refresh_token = r.refresh_token; s.onedrive_account = r.account; if (!s.name || s.name === t('Új oldal')) s.name = 'OneDrive – ' + r.account; drawForm(); drawList(); } } } }, icon('user'), s.onedrive_refresh_token ? t('Újra bejelentkezés') : t('Bejelentkezés Microsoft-fiókkal')),
+          h('button.btn.primary', { type: 'button', on: { click: async () => { const r = await oneDriveSignIn(s.onedrive_client_id); if (r) { s.onedrive_refresh_token = r.refresh_token; s.onedrive_account = r.account; if (!s.name || s.name === t('Új oldal')) s.name = 'OneDrive – ' + r.account; drawForm(); drawList(); } } } }, icon('user'), s.onedrive_refresh_token ? t('Újra bejelentkezés') : t('Bejelentkezés Microsoft-fiókkal')),
           s.onedrive_refresh_token ? h('button.btn', { type: 'button', on: { click: () => { s.onedrive_refresh_token = ''; s.onedrive_account = ''; drawForm(); drawList(); } } }, t('Kijelentkezés')) : null),
-        !S.settings.onedrive_client_id ? h('div.note.err', t('Előbb add meg az Azure alkalmazás azonosítóját: Beállítások → Felhő.')) : null));
+        !s.onedrive_client_id.trim() ? h('div.note.err', t('Előbb add meg fent az Azure alkalmazás (client) azonosítóját.')) : null));
     }
     rows.push(h('div.sm-grid',
       field(t('Távoli kezdőmappa'), inp(s, 'remote_dir', { placeholder: p === 's3' || p === 'onedrive' ? '/' : t('üres = a bejelentkezési mappa') })),
@@ -2097,8 +2154,9 @@ async function siteManager(selectId = null, mode = null) {
   else renderAll();
 }
 
-async function oneDriveSignIn() {
-  const clientId = S.settings.onedrive_client_id;
+async function oneDriveSignIn(clientId) {
+  clientId = (clientId || '').trim();
+  if (!clientId) { toast(t('Előbb add meg fent az Azure alkalmazás (client) azonosítóját.'), 'err'); return null; }
   let dc;
   try { dc = await busy(() => invoke('onedrive_device_start', { clientId })); }
   catch (e) { toast(friendly(e), 'err'); return null; }
@@ -2232,10 +2290,6 @@ async function settingsDlg(startTab) {
       fld('theme', t('Téma'), sel([['dark', t('Sötét')], ['light', t('Világos')], ['ai', 'Neon'], ['retro', t('Retró (8 bites)')], ['modern', t('Modern (üveg)')], ['modern-dark', t('Modern sötét (üveg)')], ['system', t('Rendszer szerint')]], s.theme || 'dark')),
       fld('font_size', t('Betűméret'), h('input.inp', { type: 'number', min: 10, max: 20, value: s.font_size || 13 })),
       fld('zoom', t('Nagyítás'), sel(ZOOMS.map((z) => [String(z), Math.round(z * 100) + '%']), String(ZOOMS.includes(s.zoom) ? s.zoom : 1)), t('Gyorsan: Ctrl + / Ctrl − / Ctrl 0, vagy Ctrl + egérgörgő.')))],
-    ['cloud', t('Felhő'), h('div.settings-grid',
-      fld('onedrive_client_id', t('OneDrive: Azure alkalmazás (client) azonosító'), h('input.inp', { value: s.onedrive_client_id || '', placeholder: '00000000-0000-0000-0000-000000000000', spellcheck: 'false' }),
-        t('Egyszer kell beállítani: portal.azure.com → App registrations → New registration (személyes Microsoft-fiókok is), Authentication → „Allow public client flows” = Yes, API permissions: Files.ReadWrite.All, offline_access, User.Read. Az Application (client) ID-t másold ide.'), true),
-      h('div.note.full', t('Amazon S3 és S3-kompatibilis szolgáltatók (R2, MinIO, Wasabi…): a kulcsokat oldalanként az Oldalkezelőben add meg.')))],
     ['ai', 'AI', h('div.settings-grid',
       h('label.chk.full.ai-switch', aiEnabled, h('b', t('AI funkciók bekapcsolása'))),
       h('div.note.full', t('Kikapcsolva az FtpStar semmilyen AI szolgáltatóhoz nem fordul, és az AI gomb sem látszik.')),
@@ -2265,7 +2319,6 @@ async function settingsDlg(startTab) {
     theme: els.theme.value,
     font_size: Math.max(10, Math.min(20, +els.font_size.value || 13)),
     zoom: +els.zoom.value || 1,
-    onedrive_client_id: els.onedrive_client_id.value.trim(),
     update_check: updCheck.checked,
     ai_enabled: aiEnabled.checked,
     ai_provider: providerSel.value,

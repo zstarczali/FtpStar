@@ -1,6 +1,18 @@
 FtpStar - What's new
 ====================
 
+0.5.2
+-----
+- Connection tabs can be reordered by dragging them with the mouse.
+- The OneDrive Azure application (client) id is set per connection in
+  the Site Manager, so different connections can use different Azure
+  apps. The Cloud tab of Settings is gone; connections saved before
+  keep using the id that was set there.
+- The file lists can be sorted by name, type (extension), size or date
+  modified, ascending or descending: the new sort button next to the
+  view buttons, or the right-click menu. It works in every view, and
+  each side remembers its order.
+
 0.5.1
 -----
 - When the connection tabs do not fit in the window, the ones that fit
