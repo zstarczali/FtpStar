@@ -125,7 +125,7 @@ impl Settings {
 pub struct Site {
     pub id: String,
     pub name: String,
-    /// ftp | ftps | ftps-implicit | sftp | s3 | onedrive
+    /// ftp | ftps | ftps-implicit | sftp | s3 | onedrive | nextsd
     pub protocol: String,
     pub host: String,
     /// 0 = the protocol's default
@@ -153,6 +153,10 @@ pub struct Site {
     pub onedrive_client_id: String,
     pub onedrive_refresh_token: String,
     pub onedrive_account: String,
+    /// ZX Spectrum Next SD card image (CSpect, ZEsarUX)
+    pub sd_image: String,
+    /// hdfmonkey executable; empty = the one next to the image, else on the PATH
+    pub hdfmonkey: String,
 }
 
 impl Site {

@@ -3,6 +3,7 @@ mod claude_cli;
 pub mod commands;
 pub mod conn;
 pub mod ftp;
+pub mod nextsd;
 pub mod onedrive;
 pub mod s3;
 pub mod settings;

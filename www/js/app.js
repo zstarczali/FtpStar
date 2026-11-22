@@ -34,7 +34,12 @@ export const PROTOS = {
   sftp: { label: 'SFTP (SSH)', icon: 'key', port: 22 },
   s3: { label: 'Amazon S3', icon: 'bucket', port: 0 },
   onedrive: { label: 'Microsoft OneDrive', icon: 'cloud', port: 0 },
+  nextsd: { label: 'ZX Spectrum Next SD (hdfmonkey)', icon: 'drive', port: 0 },
 };
+/** Protocols with a server address (URL, password, quick connect). */
+const isServer = (p) => ['ftp', 'ftps', 'ftps-implicit', 'sftp'].includes(p);
+/** File name of a path, for the SD image's label. */
+const baseName = (p) => (p || '').split(/[\/]/).filter(Boolean).pop() || '';
 const TAB_COLORS = ['', '#4c8dff', '#3fbf74', '#e3a33a', '#ef5d5d', '#b65cf0', '#22d3ee', '#e05577'];
 
 const cur = () => S.tabs[S.active] || null;
@@ -202,7 +207,7 @@ function activate(i) {
 /** Asks for the password when the site has none saved. Returns null on cancel. */
 async function askPassword(tab) {
   const p = tab.site.protocol;
-  if (p === 'onedrive' || tab.site.password) return '';
+  if (p === 'onedrive' || p === 'nextsd' || tab.site.password) return '';
   if (p === 'sftp' && !tab.askPass) return ''; // keys are tried first
   const pw = h('input.inp', { type: 'password', spellcheck: 'false' });
   const save = h('input', { type: 'checkbox' });
@@ -229,6 +234,7 @@ function siteProblem(s) {
   if (s.protocol === 's3' && !s.s3_bucket.trim()) return t('Nincs megadva a bucket neve.');
   if (s.protocol === 'onedrive' && !(s.onedrive_client_id || S.settings.onedrive_client_id || '').trim()) return t('Add meg a OneDrive-kapcsolat Azure alkalmazás (client) azonosítóját az Oldalkezelőben.');
   if (s.protocol === 'onedrive' && !s.onedrive_refresh_token) return t('Jelentkezz be a OneDrive-ba az Oldalkezelőben.');
+  if (s.protocol === 'nextsd' && !(s.sd_image || '').trim()) return t('Nincs megadva az SD kártya képfájlja.');
   return null;
 }
 
@@ -412,7 +418,7 @@ function renderTabs() {
       const running = S.queue.filter((j) => j.tabId === tab.id && j.status === 'running').length;
       return h('div.tab' + (i === S.active ? '.active' : ''), {
         style: tab.site.color ? { '--tab-color': tab.site.color } : {},
-        title: `${PROTOS[tab.site.protocol]?.label || ''} · ${tab.site.user ? tab.site.user + '@' : ''}${tab.site.host || tab.site.s3_bucket || tab.site.onedrive_account || ''}`,
+        title: `${PROTOS[tab.site.protocol]?.label || ''} · ${tab.site.user ? tab.site.user + '@' : ''}${tab.site.host || tab.site.s3_bucket || tab.site.onedrive_account || tab.site.sd_image || ''}`,
         on: {
           mousedown: (e) => { if (e.button === 1) { e.preventDefault(); closeTab(i); } },
           pointerdown: (e) => dragTab(e, i, moveTab),
@@ -513,6 +519,7 @@ function welcome() {
 function siteSubtitle(s) {
   if (s.protocol === 's3') return `${s.s3_bucket || '?'} · ${s.s3_endpoint || s.s3_region || 'AWS'}`;
   if (s.protocol === 'onedrive') return s.onedrive_account || t('nincs bejelentkezve');
+  if (s.protocol === 'nextsd') return s.sd_image || '?';
   return `${s.user ? s.user + '@' : ''}${s.host}${s.port ? ':' + s.port : ''}`;
 }
 
@@ -919,7 +926,7 @@ function paneMenu(e, tab, side) {
     tab.compare ? { label: t('Eltérők kijelölése'), icon: 'compare', action: () => selectDifferent(tab, side) } : null,
     { label: t('Összes kijelölése'), key: 'Ctrl+A', action: () => { pane.sel = new Set(visibleEntries(pane).map((x) => x.name)); renderRows(tab, side); renderToolbar(); } },
     { label: t('Útvonal másolása'), icon: 'copy', action: () => navigator.clipboard.writeText(full) },
-    remote && one && tab.site.protocol !== 'onedrive' && tab.site.protocol !== 's3' ? { label: t('URL másolása'), icon: 'link', action: () => navigator.clipboard.writeText(siteUrl(tab.site, full)) } : null,
+    remote && one && isServer(tab.site.protocol) ? { label: t('URL másolása'), icon: 'link', action: () => navigator.clipboard.writeText(siteUrl(tab.site, full)) } : null,
     !remote && pane.path ? { label: t('Megjelenítés a Fájlkezelőben'), icon: 'folder', action: () => invoke('reveal_path', { path: full }).catch((er) => toast(er, 'err')) } : null,
     { label: t('Frissítés'), icon: 'refresh', key: 'Ctrl+R', action: () => listPane(tab, side) },
     '-',
@@ -1302,7 +1309,7 @@ async function infoDlg(tab, side) {
   // folders: everything in them is counted in the background
   const total = h('span.v', dirs.length ? t('Számolás…') : sizeOf(files.reduce((s, e) => s + (e.size || 0), 0)));
   const contents = h('span.v', '–');
-  const where = remote ? `${PROTOS[tab.site.protocol]?.label || ''} · ${tab.site.user ? tab.site.user + '@' : ''}${tab.site.host || tab.site.s3_bucket || tab.site.onedrive_account || ''}` : t('Helyi gép');
+  const where = remote ? `${PROTOS[tab.site.protocol]?.label || ''} · ${tab.site.user ? tab.site.user + '@' : ''}${tab.site.host || tab.site.s3_bucket || tab.site.onedrive_account || tab.site.sd_image || ''}` : t('Helyi gép');
   const ext = one && !one.dir && one.name.includes('.') ? one.name.split('.').pop().toUpperCase() : '';
   const kind = one ? (one.drive ? t('Meghajtó') : one.dir ? t('Mappa') : ext ? t('{0} fájl', ext) : t('Fájl')) : t('{0} mappa, {1} fájl', dirs.length, files.length);
   const preview = one && !one.dir && IMG_EXT.test(one.name) ? h('img.info-img', { alt: '' }) : null;
@@ -1316,7 +1323,7 @@ async function infoDlg(tab, side) {
     ...(one?.mtime ? row(t('Módosítva'), `${fmtDate(one.mtime, true)}`) : []),
     ...(one?.perms ? row(t('Jogosultságok'), one.perms, '.mono') : []),
     ...(one?.link ? row(t('Hivatkozás'), t('Szimbolikus link')) : []),
-    ...(remote && one && tab.site.protocol !== 'onedrive' && tab.site.protocol !== 's3' ? row('URL', siteUrl(tab.site, full)) : []),
+    ...(remote && one && isServer(tab.site.protocol) ? row('URL', siteUrl(tab.site, full)) : []),
   );
   if (dirs.length) {
     (async () => {
@@ -2001,7 +2008,7 @@ function renderStatus() {
 function blankSite(protocol = 'ftp') {
   return { id: uid(), name: '', protocol, host: '', port: 0, user: '', password: '', key_path: '', passphrase: '', active: false,
     remote_dir: '', local_dir: '', color: '', folder: '', notes: '', s3_region: '', s3_endpoint: '', s3_bucket: '', s3_path_style: false,
-    onedrive_client_id: protocol === 'onedrive' ? knownClientId() : '', onedrive_refresh_token: '', onedrive_account: '' };
+    onedrive_client_id: protocol === 'onedrive' ? knownClientId() : '', onedrive_refresh_token: '', onedrive_account: '', sd_image: '', hdfmonkey: '' };
 }
 
 /** A client id to start a new OneDrive site with: another site's, else the old global one. */
@@ -2022,7 +2029,7 @@ async function siteManager(selectId = null, mode = null) {
     const q = search.value.trim().toLowerCase();
     const groups = new Map();
     for (const s of sites) {
-      if (q && !`${s.name} ${s.host} ${s.user} ${s.s3_bucket} ${s.folder}`.toLowerCase().includes(q)) continue;
+      if (q && !`${s.name} ${s.host} ${s.user} ${s.s3_bucket} ${s.sd_image || ''} ${s.folder}`.toLowerCase().includes(q)) continue;
       const g = s.folder || '';
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push(s);
@@ -2045,7 +2052,7 @@ async function siteManager(selectId = null, mode = null) {
     return h('label.field' + cls, h('span', label), el, note ? h('span.note', note) : null);
   }
   function inp(s, key, attrs = {}) {
-    const el = h('input.inp', { value: s[key] ?? '', spellcheck: 'false', ...attrs, on: { input: (e) => { s[key] = attrs.type === 'number' ? (+e.target.value || 0) : e.target.value; if (key === 'name' || key === 'host' || key === 'folder' || key === 'user' || key === 's3_bucket') drawList(); } } });
+    const el = h('input.inp', { value: s[key] ?? '', spellcheck: 'false', ...attrs, on: { input: (e) => { s[key] = attrs.type === 'number' ? (+e.target.value || 0) : e.target.value; if (key === 'name' || key === 'host' || key === 'folder' || key === 'user' || key === 's3_bucket' || key === 'sd_image') drawList(); } } });
     return el;
   }
   function chk(s, key, label) {
@@ -2113,13 +2120,31 @@ async function siteManager(selectId = null, mode = null) {
           s.onedrive_refresh_token ? h('button.btn', { type: 'button', on: { click: () => { s.onedrive_refresh_token = ''; s.onedrive_account = ''; drawForm(); drawList(); } } }, t('Kijelentkezés')) : null),
         !s.onedrive_client_id.trim() ? h('div.note.err', t('Előbb add meg fent az Azure alkalmazás (client) azonosítóját.')) : null));
     }
+    if (p === 'nextsd') {
+      const browseFile = async (key, title, filters) => {
+        try {
+          const f = await invoke('plugin:dialog|open', { options: { multiple: false, title, filters } });
+          if (!f) return;
+          s[key] = Array.isArray(f) ? f[0] : f;
+          if (key === 'sd_image' && (!s.name || s.name === t('Új oldal'))) s.name = 'ZX Next – ' + baseName(s[key]);
+          drawForm(); drawList();
+        } catch (e) { toast(e, 'err'); }
+      };
+      rows.push(h('div.sm-grid',
+        field(t('SD kártya képfájl'), h('div.row', inp(s, 'sd_image', { placeholder: 'D:\CSpect\zxnext.sd' }),
+          h('button.btn', { type: 'button', on: { click: () => browseFile('sd_image', t('SD kártya képfájl'), [{ name: t('SD kártya kép'), extensions: ['sd', 'img', 'hdf', 'mmc', 'vhd'] }, { name: t('Minden fájl'), extensions: ['*'] }]) } }, t('Tallózás…'))),
+          t('A CSpect (vagy ZEsarUX) által használt FAT kép, pl. a CSpect mappájában a zxnext.sd.'), '.full'),
+        field(t('hdfmonkey program'), h('div.row', inp(s, 'hdfmonkey', { placeholder: t('üres = a képfájl mellett lévő, vagy a PATH-on') }),
+          h('button.btn', { type: 'button', on: { click: () => browseFile('hdfmonkey', t('hdfmonkey program'), []) } }, t('Tallózás…'))), null, '.full'),
+      ), h('div.note', icon('info'), t('Íráskor zárd be a CSpectet: ha közben fut, nem látja a változást, vagy a saját írásával felülírhatja azt. Az átnevezés másolás + törlés, mert a hdfmonkey nem tud átnevezni. A fájlok dátumát a hdfmonkey nem mutatja.')));
+    }
     rows.push(h('div.sm-grid',
-      field(t('Távoli kezdőmappa'), inp(s, 'remote_dir', { placeholder: p === 's3' || p === 'onedrive' ? '/' : t('üres = a bejelentkezési mappa') })),
+      field(t('Távoli kezdőmappa'), inp(s, 'remote_dir', { placeholder: p === 's3' || p === 'onedrive' || p === 'nextsd' ? '/' : t('üres = a bejelentkezési mappa') })),
       field(t('Helyi kezdőmappa'), h('div.row', inp(s, 'local_dir', { placeholder: t('üres = az utoljára használt') }), h('button.btn', { type: 'button', on: { click: browseLocal } }, t('Tallózás…')))),
       field(t('Fül színe'), colors, null, '.full'),
       field(t('Megjegyzés'), h('textarea.inp', { rows: 2, value: s.notes, on: { input: (e) => { s.notes = e.target.value; } } }), null, '.full'),
     ));
-    if (s.password && p !== 'onedrive') rows.push(h('div.note', icon('lock'), t('A jelszó a beállítások mappájában, a sites.json fájlban tárolódik ezen a gépen. Hagyd üresen, ha inkább kapcsolódáskor adnád meg.')));
+    if (s.password && (isServer(p) || p === 's3')) rows.push(h('div.note', icon('lock'), t('A jelszó a beállítások mappájában, a sites.json fájlban tárolódik ezen a gépen. Hagyd üresen, ha inkább kapcsolódáskor adnád meg.')));
     formEl.replaceChildren(...rows, h('datalist#sm-folders', ...[...new Set(sites.map((x) => x.folder).filter(Boolean))].map((f) => h('option', { value: f }))));
   }
 
@@ -2192,7 +2217,7 @@ async function oneDriveSignIn(clientId) {
 
 async function quickConnect() {
   const v = await formDlg(t('Gyors kapcsolódás'), [
-    { name: 'protocol', label: t('Protokoll'), type: 'select', value: uiGet('fs.quickProto') || 'sftp', options: Object.entries(PROTOS).filter(([k]) => k !== 's3' && k !== 'onedrive').map(([k, x]) => ({ value: k, label: x.label })) },
+    { name: 'protocol', label: t('Protokoll'), type: 'select', value: uiGet('fs.quickProto') || 'sftp', options: Object.entries(PROTOS).filter(([k]) => isServer(k)).map(([k, x]) => ({ value: k, label: x.label })) },
     { name: 'host', label: t('Szerver'), placeholder: 'example.com', value: uiGet('fs.quickHost') || '' },
     { name: 'port', label: t('Port (üres = alapértelmezett)'), type: 'number', value: '' },
     { name: 'user', label: t('Felhasználónév'), value: uiGet('fs.quickUser') || '' },
@@ -2530,7 +2555,7 @@ async function init() {
     const site = S.sites.find((s) => s.id === id);
     if (!site) continue;
     // connect right away only when no password has to be asked
-    const silent = site.password || site.protocol === 'onedrive' || site.protocol === 'sftp';
+    const silent = site.password || site.protocol === 'onedrive' || site.protocol === 'sftp' || site.protocol === 'nextsd';
     openTab(site, { connect: !!silent });
   }
   if (S.tabs.length) S.active = 0;
