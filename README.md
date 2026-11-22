@@ -29,7 +29,7 @@
 
 A two-pane file transfer client for **FTP, FTPS, SFTP, Amazon S3 (and S3-compatible storage) and Microsoft OneDrive**, built with Tauri 2 and Rust. A sibling of [GitStar](https://github.com/zstarczali/GitStar): the same look, the same themes.
 
-Current version **0.5.2** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
+Current version **0.5.3** · **[Website and downloads](https://www.c64va.pro/ftpstar.html)** · [Installation guide](readme.txt) · [What's new](whatsnew.txt)
 
 Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .rpm). MIT-licensed.
 
@@ -41,6 +41,7 @@ Windows x64 and ARM64, macOS (Apple Silicon and Intel), Linux (AppImage, .deb, .
   - SFTP (SSH) in pure Rust (russh): private keys (ed25519, ECDSA, RSA, with passphrase), the default keys in `~/.ssh`, password as a fallback. The first connection shows the server's key fingerprint for confirmation; a changed key is refused.
   - Amazon S3, plus Cloudflare R2, MinIO, Wasabi, Backblaze B2, DigitalOcean Spaces… through a custom endpoint and path-style addressing.
   - Microsoft OneDrive through Microsoft Graph with device-code sign-in; large files go up in 5 MiB pieces of an upload session.
+  - ZX Spectrum Next SD card images (the `zxnext.sd` of CSpect, or ZEsarUX) through [hdfmonkey](https://github.com/gasman/hdfmonkey): list, upload, download, new folder, delete and rename.
 - **Two panes**: local files on the left, the server on the right, a tab for every connection (with a colour per site).
 - **Views**: details, small icons or large icons per pane, with **image thumbnails** (also for files on the server).
 - **Transfer queue**: parallel transfers per connection, progress, speed and time left, stop, retry failed. While the queue is hidden, the status bar shows the overall progress. Folders are transferred with everything in them.

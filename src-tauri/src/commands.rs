@@ -298,6 +298,10 @@ pub async fn connect(state: State<'_, AppState>, site: Site, password: Option<St
             });
             (Conn::OneDrive(crate::onedrive::OneDrive::open(&client_id, &site.onedrive_refresh_token, save).await?), "/".into())
         }
+        "nextsd" => {
+            let (c, home) = crate::nextsd::NextSd::open(&site).await?;
+            (Conn::NextSd(c), home)
+        }
         p => return Err(format!("unknown protocol: {p}")),
     };
     if !site.remote_dir.trim().is_empty() {

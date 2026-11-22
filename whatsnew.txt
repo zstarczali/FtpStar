@@ -1,6 +1,16 @@
 FtpStar - What's new
 ====================
 
+0.5.3
+-----
+- New connection type: ZX Spectrum Next SD card image (hdfmonkey).
+  It opens the SD image of CSpect (e.g. zxnext.sd) or ZEsarUX like a
+  server: list, upload, download, new folder, delete and rename work
+  through the hdfmonkey tool (the one next to the image, on the PATH,
+  or the one set in the Site Manager). Close CSpect before writing to
+  the image. hdfmonkey shows no file dates, and a rename is a copy
+  and a delete.
+
 0.5.2
 -----
 - Connection tabs can be reordered by dragging them with the mouse.

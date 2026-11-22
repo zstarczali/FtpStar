@@ -1,6 +1,7 @@
 //! One open connection of any protocol, behind a common set of operations.
 
 use crate::ftp::Ftp;
+use crate::nextsd::NextSd;
 use crate::onedrive::OneDrive;
 use crate::s3::S3;
 use crate::sftp::Sftp;
@@ -13,6 +14,7 @@ pub enum Conn {
     Sftp(Arc<Sftp>),
     S3(S3),
     OneDrive(OneDrive),
+    NextSd(NextSd),
 }
 
 /// A file or folder found by `walk`, relative to the walked folder ("a/b.txt").
@@ -31,6 +33,7 @@ impl Conn {
             Conn::Sftp(c) => c.list(path).await,
             Conn::S3(c) => c.list(path).await,
             Conn::OneDrive(c) => c.list(path).await,
+            Conn::NextSd(c) => c.list(path).await,
         }
     }
 
@@ -40,6 +43,7 @@ impl Conn {
             Conn::Sftp(c) => c.mkdir(path).await,
             Conn::S3(c) => c.mkdir(path).await,
             Conn::OneDrive(c) => c.mkdir(path).await,
+            Conn::NextSd(c) => c.mkdir(path).await,
         }
     }
 
@@ -48,6 +52,7 @@ impl Conn {
         match self {
             Conn::S3(c) => return if dir { c.remove_dir(path).await } else { c.remove_file(path).await },
             Conn::OneDrive(c) => return c.remove(path).await,
+            Conn::NextSd(c) => return if dir { c.remove_dir(path).await } else { c.remove_file(path).await },
             _ => {}
         }
         if !dir {
@@ -91,6 +96,7 @@ impl Conn {
             Conn::Sftp(c) => c.rename(from, to).await,
             Conn::S3(c) => c.rename(from, to, dir).await,
             Conn::OneDrive(c) => c.rename(from, to).await,
+            Conn::NextSd(c) => c.rename(from, to, dir).await,
         }
     }
 
@@ -100,6 +106,7 @@ impl Conn {
             Conn::Sftp(c) => c.download(remote, local, p).await,
             Conn::S3(c) => c.download(remote, local, p).await,
             Conn::OneDrive(c) => c.download(remote, local, p).await,
+            Conn::NextSd(c) => c.download(remote, local, p).await,
         }
     }
 
@@ -109,6 +116,7 @@ impl Conn {
             Conn::Sftp(c) => c.upload(local, remote, p).await,
             Conn::S3(c) => c.upload(local, remote, p).await,
             Conn::OneDrive(c) => c.upload(local, remote, p).await,
+            Conn::NextSd(c) => c.upload(local, remote, p).await,
         }
     }
 
