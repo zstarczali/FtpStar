@@ -237,7 +237,12 @@ pub fn open_path(path: String) -> Result<(), String> {
 #[tauri::command]
 pub fn reveal_path(path: String) -> Result<(), String> {
     #[cfg(windows)]
-    return spawn(Proc::new("explorer").arg(format!("/select,{}", path.replace('/', "\\"))));
+    {
+        use std::os::windows::process::CommandExt;
+        // Only the path may be quoted: Explorer does not understand "/select,C:\a b",
+        // which is what arg() makes of a path with a space.
+        return spawn(Proc::new("explorer").raw_arg(format!("/select,\"{}\"", path.replace('/', "\\"))));
+    }
     #[cfg(target_os = "macos")]
     return spawn(Proc::new("open").arg("-R").arg(&path));
     #[cfg(not(any(windows, target_os = "macos")))]

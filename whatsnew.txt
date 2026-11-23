@@ -1,6 +1,11 @@
 FtpStar - What's new
 ====================
 
+0.5.4
+-----
+- Windows: showing a file in Explorer works again when its name or
+  path contains a space; the folder opens with the file selected.
+
 0.5.3
 -----
 - New connection type: ZX Spectrum Next SD card image (hdfmonkey).
