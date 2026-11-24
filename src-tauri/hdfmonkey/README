@@ -1,0 +1,84 @@
+hdfmonkey: A Swiss Army Knife for manipulating HDF disk images
+
+ABOUT
+-----
+hdfmonkey provides a suite of tools for working with FAT filesystems contained
+in HDF disk images. HDF is the standard format used for virtual hard disks in
+ZX Spectrum emulators such as Fuse <http://fuse-emulator.sourceforge.net/>, so
+hdfmonkey allows these disk images to be prepared without having to go through
+a physical disk as an intermediate step - particularly useful when developing
+software for FAT-supporting systems like ESXDOS and ResiDOS.
+
+Commands provided include:
+clone, create, format, get, ls, mkdir, put, rebuild, rm
+
+These commands are passed as a parameter to hdfmonkey along with any other
+required arguments:
+
+    hdfmonkey <command> <disk-image> [other params]
+
+For further information on command formats, type 'hdfmonkey help'.
+
+INSTALLING
+----------
+From a tarball (see http://files.zxdemo.org/gasman/speccy/hdfmonkey/):
+
+    tar xzf hdfmonkey-0.4.tar.gz
+    cd hdfmonkey-0.4
+    ./configure
+    make
+    sudo make install
+
+From git:
+
+    git clone https://github.com/gasman/hdfmonkey.git
+    cd hdfmonkey
+    autoheader
+    aclocal
+    autoconf
+    automake -a
+    ./configure
+    make
+    sudo make install
+
+From git into a Debian source package:
+
+    git clone https://github.com/gasman/hdfmonkey.git
+    dpkg-source -b hdfmonkey
+
+From git into Debian binary package:
+
+    git clone https://github.com/gasman/hdfmonkey.git hdfmonkey-0.4.1
+    cd hdfmonkey-0.4.1
+    fakeroot debian/rules binary
+
+TODO
+----
+Implement a FUSE / MacFUSE filesystem driver, so that the disk image can be
+mounted and accessed by standard OS file operations.
+
+COPYRIGHT
+---------
+This program is free software: you can redistribute it and/or modify it under
+the terms of version 3 of the GNU General Public License as published by the
+Free Software Foundation.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+AUTHORS
+-------
+Matt Westcott <matt@west.co.tt>
+
+All of the clever FAT handling is handled by FatFs by ChaN:
+http://elm-chan.org/fsw/ff/00index_e.html
+
+Additional contributions by Miguel Guerreiro, Philip Kendall and Sergio Baldovi.
+
+FURTHER READING
+---------------
+HDF file format: http://faqwiki.zxnet.co.uk/wiki/HDF_format
+ESXDOS: http://www.esxdos.org/
+ResiDOS: http://www.worldofspectrum.org/residos/

@@ -1,7 +1,7 @@
 FtpStar Installation Guide
 ==========================
 
-Version 0.5.4
+Version 0.5.5
 -------------
 On macOS the self-update installs the new version and restarts
 FtpStar, instead of only opening the downloaded .dmg.
@@ -165,4 +165,6 @@ configuration folder (About > Settings folder). Saved passwords are
 stored in sites.json on this computer.
 
 License: MIT. Copyright (c) 2026 Zsolt Tarczali. See LICENSE.
-Third-party components retain their own licenses.
+Third-party components retain their own licenses. The bundled hdfmonkey
+is a separate program under GPL-3.0; its source is in the folder
+src-tauri/hdfmonkey of https://github.com/zstarczali/FtpStar

@@ -2134,7 +2134,7 @@ async function siteManager(selectId = null, mode = null) {
         field(t('SD kártya képfájl'), h('div.row', inp(s, 'sd_image', { placeholder: 'D:\CSpect\zxnext.sd' }),
           h('button.btn', { type: 'button', on: { click: () => browseFile('sd_image', t('SD kártya képfájl'), [{ name: t('SD kártya kép'), extensions: ['sd', 'img', 'hdf', 'mmc', 'vhd'] }, { name: t('Minden fájl'), extensions: ['*'] }]) } }, t('Tallózás…'))),
           t('A CSpect (vagy ZEsarUX) által használt FAT kép, pl. a CSpect mappájában a zxnext.sd.'), '.full'),
-        field(t('hdfmonkey program'), h('div.row', inp(s, 'hdfmonkey', { placeholder: t('üres = a képfájl mellett lévő, vagy a PATH-on') }),
+        field(t('hdfmonkey program'), h('div.row', inp(s, 'hdfmonkey', { placeholder: t('üres = az FtpStarral telepített') }),
           h('button.btn', { type: 'button', on: { click: () => browseFile('hdfmonkey', t('hdfmonkey program'), []) } }, t('Tallózás…'))), null, '.full'),
       ), h('div.note', icon('info'), t('Íráskor zárd be a CSpectet: ha közben fut, nem látja a változást, vagy a saját írásával felülírhatja azt. Az átnevezés másolás + törlés, mert a hdfmonkey nem tud átnevezni. A fájlok dátumát a hdfmonkey nem mutatja.')));
     }

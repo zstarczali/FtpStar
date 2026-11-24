@@ -20,7 +20,7 @@ fn rel(path: &str) -> String {
     path.trim_matches('/').to_string()
 }
 
-/// hdfmonkey writes names in the Windows ANSI code page, not UTF-8.
+/// The bundled hdfmonkey writes UTF-8, others the Windows ANSI code page.
 #[cfg(windows)]
 fn decode(bytes: &[u8]) -> String {
     if let Ok(s) = std::str::from_utf8(bytes) {
@@ -47,12 +47,18 @@ fn decode(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
-/// The hdfmonkey to use: the one set for the site, else the one next to the
-/// image, else the one on the PATH.
+/// The hdfmonkey to use: the one set for the site, else the one that comes with
+/// FtpStar, else the one next to the image, else the one on the PATH.
 fn find_tool(site: &Site, image: &Path) -> PathBuf {
     let set = site.hdfmonkey.trim();
     if !set.is_empty() {
         return PathBuf::from(set);
+    }
+    let bundled = if cfg!(windows) { "ftpstar-hdfmonkey.exe" } else { "ftpstar-hdfmonkey" };
+    if let Some(p) = std::env::current_exe().ok().and_then(|e| Some(e.parent()?.join(bundled))) {
+        if p.is_file() {
+            return p;
+        }
     }
     let exe = if cfg!(windows) { "hdfmonkey.exe" } else { "hdfmonkey" };
     if let Some(dir) = image.parent() {

@@ -1,6 +1,15 @@
 FtpStar - What's new
 ====================
 
+0.5.5
+-----
+- ZX Spectrum Next SD images: hdfmonkey is now installed together with
+  FtpStar on every platform, no separate download is needed. Another
+  one can still be set in the Site Manager.
+- File names with accents are right on every platform, images and
+  files over 2 GB work, and a full image is reported as an error
+  instead of leaving a truncated file. (With the bundled hdfmonkey.)
+
 0.5.4
 -----
 - Windows: showing a file in Explorer works again when its name or

@@ -155,7 +155,7 @@ pub struct Site {
     pub onedrive_account: String,
     /// ZX Spectrum Next SD card image (CSpect, ZEsarUX)
     pub sd_image: String,
-    /// hdfmonkey executable; empty = the one next to the image, else on the PATH
+    /// hdfmonkey executable; empty = the bundled one
     pub hdfmonkey: String,
 }
 
