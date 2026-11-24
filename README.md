@@ -97,4 +97,4 @@ Bug reports and ideas are welcome in [Issues](https://github.com/zstarczali/FtpS
 
 ## License
 
-MIT License, © 2026 Zsolt Tarczali. See [LICENSE](LICENSE). Download the installers from the [website](https://www.c64va.pro/ftpstar.html).
+MIT License, © 2026 Zsolt Tarczali. See [LICENSE](LICENSE). The bundled hdfmonkey is a separate program under GPL-3.0 ([COPYING](src-tauri/hdfmonkey/COPYING), [changes](src-tauri/hdfmonkey/README.ftpstar.txt)). Download the installers from the [website](https://www.c64va.pro/ftpstar.html).

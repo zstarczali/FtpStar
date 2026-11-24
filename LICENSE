@@ -19,3 +19,25 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Third-party program distributed with FtpStar
+
+The MIT License above does not apply to hdfmonkey. hdfmonkey (installed as
+ftpstar-hdfmonkey) is a separate program that FtpStar runs as an external
+command.
+
+hdfmonkey: Copyright (C) 2010 Matt Westcott and contributors.
+License:   GNU General Public License, version 3 or later, WITHOUT ANY
+           WARRANTY. The full text is installed as hdfmonkey/COPYING.txt and
+           is at https://www.gnu.org/licenses/gpl-3.0.html
+Contains:  FatFs, Copyright (C) ChaN, under its own permissive license
+           (see src-tauri/hdfmonkey/src/ff.c in the source).
+Origin:    https://codeberg.org/chwe/hdfmonkey, modified for FtpStar; the
+           changes are listed in hdfmonkey/README.txt.
+Source:    the complete source and build script of the distributed version:
+           src-tauri/hdfmonkey and src-tauri/build.rs in
+           https://github.com/zstarczali/FtpStar
+
+Other third-party components retain their own licenses.
