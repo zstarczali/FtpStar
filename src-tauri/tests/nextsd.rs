@@ -14,20 +14,20 @@ fn p() -> Progress {
 }
 
 /// A temporary folder (with an accented name) and a new image in it.
-fn image(name: &str, size: &str) -> (PathBuf, Site) {
+fn image(name: &str, size: &str) -> (PathBuf, Site, String) {
     let tool = std::env::var("FTPSTAR_HDFMONKEY").unwrap_or_else(|_| env!("FTPSTAR_BUILT_HDFMONKEY").into());
     let tmp = std::env::temp_dir().join(format!("ftpstar-sdkép-{name}-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let img = tmp.join("tűkör.img").display().to_string();
     let out = std::process::Command::new(&tool).args(["create", &img, size]).output().expect("hdfmonkey");
     assert!(out.status.success(), "{out:?}");
-    (tmp, Site { protocol: "nextsd".into(), sd_image: img, hdfmonkey: tool, ..Default::default() })
+    (tmp, Site { protocol: "nextsd".into(), sd_image: img, ..Default::default() }, tool)
 }
 
 #[tokio::test]
 async fn round_trip() {
-    let (tmp, site) = image("round-trip", "64M");
-    let (sd, home) = NextSd::open(&site).await.expect("open");
+    let (tmp, site, tool) = image("round-trip", "64M");
+    let (sd, home) = NextSd::open(&site, &tool).await.expect("open");
     assert_eq!(home, "/");
     let c = Conn::NextSd(sd);
 
@@ -77,8 +77,8 @@ async fn round_trip() {
 /// A file that does not fit is an error and leaves nothing behind.
 #[tokio::test]
 async fn full_image() {
-    let (tmp, site) = image("full", "1M");
-    let c = Conn::NextSd(NextSd::open(&site).await.expect("open").0);
+    let (tmp, site, tool) = image("full", "1M");
+    let c = Conn::NextSd(NextSd::open(&site, &tool).await.expect("open").0);
     let big = tmp.join("big.bin");
     std::fs::write(&big, vec![7u8; 2 << 20]).unwrap();
     assert!(c.upload(&big.display().to_string(), "/big.bin", p()).await.is_err());
@@ -90,8 +90,8 @@ async fn full_image() {
 #[tokio::test]
 #[ignore = "fills 4.5 GB of disk"]
 async fn large_image() {
-    let (tmp, site) = image("large", "6G");
-    let c = Conn::NextSd(NextSd::open(&site).await.expect("open").0);
+    let (tmp, site, tool) = image("large", "6G");
+    let c = Conn::NextSd(NextSd::open(&site, &tool).await.expect("open").0);
     let (src, out) = (tmp.join("src.bin"), tmp.join("out.bin"));
     for i in 0..18u32 {
         let data: Vec<u8> = (0..(256u32 << 20) / 4).flat_map(|n| (n ^ (i << 26)).to_le_bytes()).collect();

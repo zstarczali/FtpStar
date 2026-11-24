@@ -237,6 +237,7 @@ const EN = {
   'A CSpect (vagy ZEsarUX) által használt FAT kép, pl. a CSpect mappájában a zxnext.sd.': 'The FAT image used by CSpect (or ZEsarUX), e.g. zxnext.sd in the CSpect folder.',
   'hdfmonkey program': 'hdfmonkey program',
   'üres = az FtpStarral telepített': 'empty = the one installed with FtpStar',
+  'A ZX Spectrum Next SD képfájlokhoz. A változás a következő kapcsolódáskor lép életbe.': 'For ZX Spectrum Next SD images. A change takes effect at the next connection.',
   'Íráskor zárd be a CSpectet: ha közben fut, nem látja a változást, vagy a saját írásával felülírhatja azt. Az átnevezés másolás + törlés, mert a hdfmonkey nem tud átnevezni. A fájlok dátumát a hdfmonkey nem mutatja.': 'Close CSpect before writing: while it runs, it does not see the change, or its own writes can overwrite it. Rename is copy + delete, because hdfmonkey cannot rename. hdfmonkey does not show file dates.',
   'pl. Saját weboldal': 'e.g. My website',
   'Protokoll': 'Protocol',
