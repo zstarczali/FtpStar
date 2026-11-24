@@ -54,6 +54,8 @@ pub struct Settings {
     pub ui: BTreeMap<String, serde_json::Value>,
     /// Network timeout in seconds: connecting, and a read / write that stalls.
     pub timeout: u32,
+    /// hdfmonkey executable (ZX Spectrum Next SD images); empty = the bundled one
+    pub hdfmonkey: String,
     /// Folder with the installers (empty = update::UPDATE_SERVER_DEFAULT)
     pub update_server: String,
     /// Look for a new version at start
@@ -89,6 +91,7 @@ impl Default for Settings {
             last_local_dir: String::new(),
             ui: BTreeMap::new(),
             timeout: 30,
+            hdfmonkey: String::new(),
             update_server: String::new(),
             update_check: true,
             update_skip: String::new(),
@@ -155,8 +158,6 @@ pub struct Site {
     pub onedrive_account: String,
     /// ZX Spectrum Next SD card image (CSpect, ZEsarUX)
     pub sd_image: String,
-    /// hdfmonkey executable; empty = the one next to the image, else on the PATH
-    pub hdfmonkey: String,
 }
 
 impl Site {

@@ -78,6 +78,22 @@ jobs:
       - name: Build
         run: npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
 
+      # The cross-compiled ones do not run on the runner
+      - name: Check the bundled hdfmonkey
+        if: matrix.target != 'aarch64-pc-windows-msvc' && matrix.target != 'x86_64-apple-darwin'
+        shell: bash
+        run: |
+          hm="$(ls "$PWD"/src-tauri/binaries/ftpstar-hdfmonkey-${{ matrix.target }}*)"
+          mkdir -p "$RUNNER_TEMP/hm" && cd "$RUNNER_TEMP/hm"
+          echo "hello next" > src.txt
+          "$hm" create t.img 64M
+          "$hm" mkdir t.img "sub dir"
+          "$hm" put t.img src.txt "sub dir/Árvíztűrő.txt"
+          "$hm" ls t.img "sub dir" | grep -F "Árvíztűrő.txt"
+          "$hm" get t.img "sub dir/Árvíztűrő.txt" out.txt
+          cmp src.txt out.txt
+          "$hm" rm t.img "sub dir/Árvíztűrő.txt"
+
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:

@@ -2008,7 +2008,7 @@ function renderStatus() {
 function blankSite(protocol = 'ftp') {
   return { id: uid(), name: '', protocol, host: '', port: 0, user: '', password: '', key_path: '', passphrase: '', active: false,
     remote_dir: '', local_dir: '', color: '', folder: '', notes: '', s3_region: '', s3_endpoint: '', s3_bucket: '', s3_path_style: false,
-    onedrive_client_id: protocol === 'onedrive' ? knownClientId() : '', onedrive_refresh_token: '', onedrive_account: '', sd_image: '', hdfmonkey: '' };
+    onedrive_client_id: protocol === 'onedrive' ? knownClientId() : '', onedrive_refresh_token: '', onedrive_account: '', sd_image: '' };
 }
 
 /** A client id to start a new OneDrive site with: another site's, else the old global one. */
@@ -2134,8 +2134,6 @@ async function siteManager(selectId = null, mode = null) {
         field(t('SD kártya képfájl'), h('div.row', inp(s, 'sd_image', { placeholder: 'D:\CSpect\zxnext.sd' }),
           h('button.btn', { type: 'button', on: { click: () => browseFile('sd_image', t('SD kártya képfájl'), [{ name: t('SD kártya kép'), extensions: ['sd', 'img', 'hdf', 'mmc', 'vhd'] }, { name: t('Minden fájl'), extensions: ['*'] }]) } }, t('Tallózás…'))),
           t('A CSpect (vagy ZEsarUX) által használt FAT kép, pl. a CSpect mappájában a zxnext.sd.'), '.full'),
-        field(t('hdfmonkey program'), h('div.row', inp(s, 'hdfmonkey', { placeholder: t('üres = a képfájl mellett lévő, vagy a PATH-on') }),
-          h('button.btn', { type: 'button', on: { click: () => browseFile('hdfmonkey', t('hdfmonkey program'), []) } }, t('Tallózás…'))), null, '.full'),
       ), h('div.note', icon('info'), t('Íráskor zárd be a CSpectet: ha közben fut, nem látja a változást, vagy a saját írásával felülírhatja azt. Az átnevezés másolás + törlés, mert a hdfmonkey nem tud átnevezni. A fájlok dátumát a hdfmonkey nem mutatja.')));
     }
     rows.push(h('div.sm-grid',
@@ -2303,12 +2301,20 @@ async function settingsDlg(startTab) {
   aiEnabled.addEventListener('change', syncAi);
   syncAi();
 
+  const hdfPath = h('input.inp', { value: s.hdfmonkey || '', placeholder: t('üres = az FtpStarral telepített'), spellcheck: 'false' });
+  const browseHdf = async () => {
+    try { const p = await invoke('plugin:dialog|open', { options: { multiple: false, title: t('hdfmonkey program') } }); if (p) hdfPath.value = Array.isArray(p) ? p[0] : p; } catch (e) { toast(e, 'err'); }
+  };
+
   const tabs = [
     ['general', t('Általános'), h('div.settings-grid',
       fld('ui_language', t('Felület nyelve'), sel([['auto', t('Automatikus (rendszer)')], ['hu', 'Magyar'], ['en', 'English']], s.ui_language || 'auto')),
       fld('overwrite', t('Ha a célfájl már létezik'), sel([['ask', t('Kérdezzen')], ['overwrite', t('Felülírás')], ['newer', t('Csak ha újabb')], ['skip', t('Kihagyás')]], s.overwrite || 'ask')),
       fld('parallel', t('Párhuzamos átvitelek kapcsolatonként'), sel([1, 2, 3, 4, 6, 8].map((n) => [String(n), String(n)]), String(s.parallel || 2)), t('FTP-nél mindegyik saját kapcsolatot nyit.')),
       fld('timeout', t('Hálózati időkorlát (másodperc)'), h('input.inp', { type: 'number', min: 5, max: 600, value: s.timeout || 30 }), t('Ennyi ideig vár a kapcsolódásra, illetve egy elakadt átvitelre (5–600). Lassú szervernél növeld.')),
+      h('div.field.full', h('span', t('hdfmonkey program')), h('div', { style: { display: 'flex', gap: '6px' } }, hdfPath,
+        h('button.btn', { type: 'button', on: { click: browseHdf } }, t('Tallózás…'))),
+        h('span.note', t('A ZX Spectrum Next SD képfájlokhoz. A változás a következő kapcsolódáskor lép életbe.'))),
       chk('show_hidden', t('Rejtett fájlok megjelenítése (.pont kezdetű nevek)'), s.show_hidden),
       chk('confirm_delete', t('Megerősítés törlés előtt'), s.confirm_delete !== false))],
     ['look', t('Megjelenés'), h('div.settings-grid',
@@ -2339,6 +2345,7 @@ async function settingsDlg(startTab) {
     overwrite: els.overwrite.value,
     parallel: +els.parallel.value || 2,
     timeout: Math.max(5, Math.min(600, Math.round(+els.timeout.value) || 30)),
+    hdfmonkey: hdfPath.value.trim(),
     show_hidden: els.show_hidden.checked,
     confirm_delete: els.confirm_delete.checked,
     theme: els.theme.value,

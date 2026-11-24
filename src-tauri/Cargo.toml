@@ -1,6 +1,6 @@
 [package]
 name = "ftpstar"
-version = "0.5.4"
+version = "0.5.5"
 description = "FtpStar - FTP, SFTP, S3 and OneDrive client"
 edition = "2021"
 license = "MIT"
@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+cc = "1"
 
 [dependencies]
 tauri = { version = "2", features = [] }

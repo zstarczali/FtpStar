@@ -20,7 +20,7 @@ fn rel(path: &str) -> String {
     path.trim_matches('/').to_string()
 }
 
-/// hdfmonkey writes names in the Windows ANSI code page, not UTF-8.
+/// The bundled hdfmonkey writes UTF-8, others the Windows ANSI code page.
 #[cfg(windows)]
 fn decode(bytes: &[u8]) -> String {
     if let Ok(s) = std::str::from_utf8(bytes) {
@@ -47,12 +47,18 @@ fn decode(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).into_owned()
 }
 
-/// The hdfmonkey to use: the one set for the site, else the one next to the
-/// image, else the one on the PATH.
-fn find_tool(site: &Site, image: &Path) -> PathBuf {
-    let set = site.hdfmonkey.trim();
+/// The hdfmonkey to use: the one set in Settings, else the one that comes with
+/// FtpStar, else the one next to the image, else the one on the PATH.
+fn find_tool(set: &str, image: &Path) -> PathBuf {
+    let set = set.trim().trim_matches('"');
     if !set.is_empty() {
         return PathBuf::from(set);
+    }
+    let bundled = if cfg!(windows) { "ftpstar-hdfmonkey.exe" } else { "ftpstar-hdfmonkey" };
+    if let Some(p) = std::env::current_exe().ok().and_then(|e| Some(e.parent()?.join(bundled))) {
+        if p.is_file() {
+            return p;
+        }
     }
     let exe = if cfg!(windows) { "hdfmonkey.exe" } else { "hdfmonkey" };
     if let Some(dir) = image.parent() {
@@ -65,7 +71,7 @@ fn find_tool(site: &Site, image: &Path) -> PathBuf {
 }
 
 impl NextSd {
-    pub async fn open(site: &Site) -> Result<(Self, String), String> {
+    pub async fn open(site: &Site, hdfmonkey: &str) -> Result<(Self, String), String> {
         let image = site.sd_image.trim().trim_matches('"').to_string();
         if image.is_empty() {
             return Err("SD image file missing".into());
@@ -73,7 +79,7 @@ impl NextSd {
         if !Path::new(&image).is_file() {
             return Err(format!("SD image not found: {image}"));
         }
-        let tool = find_tool(site, Path::new(&image));
+        let tool = find_tool(hdfmonkey, Path::new(&image));
         let me = Self { tool, image, lock: tokio::sync::Mutex::new(()) };
         me.list("/").await?; // fails on a missing hdfmonkey or a bad image
         Ok((me, "/".into()))
@@ -92,7 +98,10 @@ impl NextSd {
         let tool = self.tool.display().to_string();
         let out = tokio::task::spawn_blocking(move || c.output()).await.map_err(|e| e.to_string())?.map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                format!("hdfmonkey not found ({tool}). Set its path in the Site Manager.")
+                crate::settings::tr(
+                    &format!("A hdfmonkey nem található ({tool}). Az útvonala a Beállítások → Általános lapon adható meg."),
+                    &format!("hdfmonkey not found ({tool}). Set its path in Settings → General."),
+                )
             } else {
                 format!("{tool}: {e}")
             }
